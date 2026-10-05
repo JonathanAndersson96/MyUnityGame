@@ -75,56 +75,61 @@ public class BattleManager : MonoBehaviour
         GUI.Box(box, "Demon Encounter");
 
         GUILayout.BeginArea(box);
-        GUILayout.Space(28f);
-        GUILayout.Label($"Player HP: {playerHp}/{PlayerMaxHp}");
-        GUILayout.Label($"Demon HP: {demonHp}/{DemonMaxHp}");
-
-        if (battleEnded)
+        try
         {
-            GUILayout.Label("The demon stands down.");
-            if (GUILayout.Button("Return to the overworld"))
+            GUILayout.Space(28f);
+            GUILayout.Label($"Player HP: {playerHp}/{PlayerMaxHp}");
+            GUILayout.Label($"Demon HP: {demonHp}/{DemonMaxHp}");
+
+            if (battleEnded)
             {
-                isActive = false;
-                battleEnded = false;
-
-                if (playerWon && demon != null)
+                GUILayout.Label("The demon stands down.");
+                if (GUILayout.Button("Return to the overworld"))
                 {
-                    Destroy(demon);
-                    demon = null;
+                    isActive = false;
+                    battleEnded = false;
+
+                    if (playerWon && demon != null)
+                    {
+                        Destroy(demon);
+                        demon = null;
+                    }
                 }
+                return;
             }
-            return;
-        }
 
-        if (demonHp <= 0)
+            if (demonHp <= 0)
+            {
+                EndBattle(true);
+                return;
+            }
+
+            if (playerHp <= 0)
+            {
+                EndBattle(false);
+                return;
+            }
+
+            if (GUILayout.Button("Attack"))
+            {
+                PlayerAttack();
+            }
+
+            if (GUILayout.Button("Guard"))
+            {
+                playerGuarding = true;
+                StartEnemyTurn();
+            }
+
+            if (GUILayout.Button("Flee"))
+            {
+                EndBattle(false);
+            }
+        }
+        finally
         {
-            EndBattle(true);
-            return;
+            GUILayout.EndArea();
         }
-
-        if (playerHp <= 0)
-        {
-            EndBattle(false);
-            return;
-        }
-
-        if (GUILayout.Button("Attack"))
-        {
-            PlayerAttack();
-        }
-
-        if (GUILayout.Button("Guard"))
-        {
-            playerGuarding = true;
-            StartEnemyTurn();
-        }
-
-        if (GUILayout.Button("Flee"))
-        {
-            EndBattle(false);
-        }
-
-        GUILayout.EndArea();
     }
 
     private void PlayerAttack()
