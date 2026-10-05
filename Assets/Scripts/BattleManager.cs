@@ -11,40 +11,11 @@ public class BattleManager : MonoBehaviour
         Resolved
     }
 
-    private class CombatantStats
-    {
-        public string Name { get; }
-        public int MaxHp { get; }
-        public int CurrentHp { get; private set; }
-
-        public CombatantStats(string name, int maxHp)
-        {
-            Name = name;
-            MaxHp = maxHp;
-            CurrentHp = maxHp;
-        }
-
-        public void Reset()
-        {
-            CurrentHp = MaxHp;
-        }
-
-        public void ApplyDamage(int amount)
-        {
-            CurrentHp = Mathf.Max(0, CurrentHp - amount);
-        }
-
-        public bool IsAlive => CurrentHp > 0;
-
-        public string HpText => $"{Name} HP: {CurrentHp}/{MaxHp}";
-    }
-
-    private const int PlayerMaxHp = 20;
     private const int DemonMaxHp = 16;
 
     private BattleState battleState;
-    private CombatantStats playerStats;
-    private CombatantStats demonStats;
+    private PartyMember playerMember;
+    private PartyMember demonMember;
     private bool playerGuarding;
     private float enemyTurnDelay;
     private bool playerWon;
@@ -61,8 +32,16 @@ public class BattleManager : MonoBehaviour
         }
 
         Instance = this;
-        playerStats = new CombatantStats("Player", PlayerMaxHp);
-        demonStats = new CombatantStats("Demon", DemonMaxHp);
+    }
+
+    private PartyMember GetActivePartyMember()
+    {
+        if (PartyManager.Instance == null)
+        {
+            return null;
+        }
+
+        return PartyManager.Instance.ActiveMember;
     }
 
     public void StartBattle()
@@ -73,10 +52,18 @@ public class BattleManager : MonoBehaviour
         }
 
         demonObject = GameObject.Find("DemonEncounter");
+        playerMember = GetActivePartyMember();
+        demonMember = new PartyMember("Demon", DemonMaxHp);
+
+        if (playerMember == null)
+        {
+            playerMember = new PartyMember("Player", 20);
+        }
+
         battleState = BattleState.Active;
         playerWon = false;
-        playerStats.Reset();
-        demonStats.Reset();
+        playerMember.Reset();
+        demonMember.Reset();
         playerGuarding = false;
         enemyTurnDelay = 0f;
         Debug.Log("Battle started against the demon.");
@@ -113,8 +100,20 @@ public class BattleManager : MonoBehaviour
         try
         {
             GUILayout.Space(28f);
-            GUILayout.Label(playerStats.HpText);
-            GUILayout.Label(demonStats.HpText);
+
+            if (PartyManager.Instance != null)
+            {
+                foreach (var member in PartyManager.Instance.Members)
+                {
+                    GUILayout.Label(member.HpText);
+                }
+            }
+            else if (playerMember != null)
+            {
+                GUILayout.Label(playerMember.HpText);
+            }
+
+            GUILayout.Label(demonMember.HpText);
 
             if (battleState == BattleState.Resolved)
             {
@@ -132,13 +131,13 @@ public class BattleManager : MonoBehaviour
                 return;
             }
 
-            if (!demonStats.IsAlive)
+            if (!demonMember.IsAlive)
             {
                 EndBattle(true);
                 return;
             }
 
-            if (!playerStats.IsAlive)
+            if (!playerMember.IsAlive)
             {
                 EndBattle(false);
                 return;
@@ -169,10 +168,10 @@ public class BattleManager : MonoBehaviour
     private void PlayerAttack()
     {
         var damage = Random.Range(4, 9);
-        demonStats.ApplyDamage(damage);
+        demonMember.ApplyDamage(damage);
         Debug.Log($"Player hits for {damage} damage.");
 
-        if (!demonStats.IsAlive)
+        if (!demonMember.IsAlive)
         {
             EndBattle(true);
             return;
@@ -195,10 +194,10 @@ public class BattleManager : MonoBehaviour
             playerGuarding = false;
         }
 
-        playerStats.ApplyDamage(damage);
+        playerMember.ApplyDamage(damage);
         Debug.Log($"Demon hits for {damage} damage.");
 
-        if (!playerStats.IsAlive)
+        if (!playerMember.IsAlive)
         {
             EndBattle(false);
         }
