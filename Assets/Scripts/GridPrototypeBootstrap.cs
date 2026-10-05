@@ -46,6 +46,7 @@ public class GridPrototypeBootstrap : MonoBehaviour
         CreateLighting();
         CreateGrid();
         CreateBlockedTerrain();
+        CreateBattleManager();
         CreatePlayer();
         CreateDemon();
         CreateCamera();
@@ -115,6 +116,13 @@ public class GridPrototypeBootstrap : MonoBehaviour
             renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             renderer.material.SetColor("_BaseColor", new Color(0.42f, 0.38f, 0.36f));
         }
+    }
+
+    private void CreateBattleManager()
+    {
+        var battleManagerObject = new GameObject("BattleManager");
+        battleManagerObject.transform.SetParent(transform);
+        battleManagerObject.AddComponent<BattleManager>();
     }
 
     private void CreatePlayer()

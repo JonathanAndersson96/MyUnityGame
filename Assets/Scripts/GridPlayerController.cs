@@ -22,6 +22,11 @@ public class GridPlayerController : MonoBehaviour
             return;
         }
 
+        if (BattleManager.Instance != null && BattleManager.Instance.IsActive)
+        {
+            return;
+        }
+
         var keyboard = Keyboard.current;
         if (keyboard == null)
         {

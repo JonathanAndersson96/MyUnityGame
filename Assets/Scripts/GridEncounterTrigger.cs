@@ -36,6 +36,11 @@ public class GridEncounterTrigger : MonoBehaviour
         var keyboard = Keyboard.current;
         if (inRange && keyboard != null && keyboard.eKey.wasPressedThisFrame)
         {
+            if (BattleManager.Instance != null)
+            {
+                BattleManager.Instance.StartBattle();
+            }
+
             Debug.Log("Encounter triggered: demon in the wild. Battle state ready.");
         }
     }
