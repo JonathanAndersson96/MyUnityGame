@@ -10,7 +10,7 @@ public class GridEncounterTrigger : MonoBehaviour
     {
         if (player == null)
         {
-            player = FindFirstObjectByType<GridPlayerController>();
+            player = GameObject.FindWithTag("Player")?.GetComponent<GridPlayerController>();
         }
 
         if (player == null)

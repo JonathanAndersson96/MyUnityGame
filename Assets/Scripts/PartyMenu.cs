@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PartyMenu : MonoBehaviour
 {
@@ -8,12 +9,13 @@ public class PartyMenu : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current == null)
+        var keyboard = Keyboard.current;
+        if (keyboard == null)
         {
             return;
         }
 
-        if (Keyboard.current.tabKey.wasPressedThisFrame)
+        if (keyboard.tabKey.wasPressedThisFrame)
         {
             isOpen = !isOpen;
         }
