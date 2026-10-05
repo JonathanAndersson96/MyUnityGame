@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 public class GridEncounterTrigger : MonoBehaviour
 {
     private GridPlayerController player;
+    private bool playerInRange;
 
     private void Update()
     {
@@ -23,21 +24,39 @@ public class GridEncounterTrigger : MonoBehaviour
             return;
         }
 
-        if (player.CurrentCell == activeWorld.DemonCell)
-        {
-            var material = GetComponent<Renderer>().material;
-            material.SetColor("_BaseColor", new Color(1f, 0.38f, 0.38f));
+        var inRange = player.CurrentCell == activeWorld.DemonCell || 
+                      Mathf.Abs(player.CurrentCell.x - activeWorld.DemonCell.x) <= 1 &&
+                      Mathf.Abs(player.CurrentCell.y - activeWorld.DemonCell.y) <= 1;
 
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
-            {
-                Debug.Log("Encounter triggered: demon in the wild. Battle state ready.");
-            }
-        }
-        else
+        playerInRange = inRange;
+
+        var material = GetComponent<Renderer>().material;
+        material.SetColor("_BaseColor", inRange ? new Color(1f, 0.38f, 0.38f) : new Color(0.82f, 0.18f, 0.22f));
+
+        var keyboard = Keyboard.current;
+        if (inRange && keyboard != null && keyboard.eKey.wasPressedThisFrame)
         {
-            var material = GetComponent<Renderer>().material;
-            material.SetColor("_BaseColor", new Color(0.82f, 0.18f, 0.22f));
+            Debug.Log("Encounter triggered: demon in the wild. Battle state ready.");
         }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (!other.CompareTag("Player"))
+        {
+            return;
+        }
+
+        playerInRange = true;
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (!other.CompareTag("Player"))
+        {
+            return;
+        }
+
+        playerInRange = false;
     }
 }

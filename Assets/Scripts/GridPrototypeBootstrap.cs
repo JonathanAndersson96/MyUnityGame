@@ -109,6 +109,7 @@ public class GridPrototypeBootstrap : MonoBehaviour
             rock.transform.SetParent(transform);
             rock.transform.position = new Vector3(obstacle.x, 0.5f, obstacle.y);
             rock.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
+            rock.AddComponent<BoxCollider>();
 
             var renderer = rock.GetComponent<Renderer>();
             renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -119,10 +120,16 @@ public class GridPrototypeBootstrap : MonoBehaviour
     private void CreatePlayer()
     {
         var player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        player.tag = "Player";
         player.name = "Player";
         player.transform.SetParent(transform);
         player.transform.position = GridToWorld(playerStartCell);
         player.transform.localScale = new Vector3(0.55f, 0.7f, 0.55f);
+        player.AddComponent<CapsuleCollider>();
+
+        var rigidbody = player.AddComponent<Rigidbody>();
+        rigidbody.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+        rigidbody.useGravity = false;
 
         var renderer = player.GetComponent<Renderer>();
         renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -139,6 +146,9 @@ public class GridPrototypeBootstrap : MonoBehaviour
         demon.transform.SetParent(transform);
         demon.transform.position = GridToWorld(demonCell);
         demon.transform.localScale = new Vector3(0.7f, 1.2f, 0.7f);
+
+        var collider = demon.AddComponent<BoxCollider>();
+        collider.isTrigger = true;
 
         var renderer = demon.GetComponent<Renderer>();
         renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
