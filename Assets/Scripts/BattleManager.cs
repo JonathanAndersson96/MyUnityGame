@@ -4,19 +4,53 @@ public class BattleManager : MonoBehaviour
 {
     public static BattleManager Instance { get; private set; }
 
+    private enum BattleState
+    {
+        Inactive,
+        Active,
+        Resolved
+    }
+
+    private class CombatantStats
+    {
+        public string Name { get; }
+        public int MaxHp { get; }
+        public int CurrentHp { get; private set; }
+
+        public CombatantStats(string name, int maxHp)
+        {
+            Name = name;
+            MaxHp = maxHp;
+            CurrentHp = maxHp;
+        }
+
+        public void Reset()
+        {
+            CurrentHp = MaxHp;
+        }
+
+        public void ApplyDamage(int amount)
+        {
+            CurrentHp = Mathf.Max(0, CurrentHp - amount);
+        }
+
+        public bool IsAlive => CurrentHp > 0;
+
+        public string HpText => $"{Name} HP: {CurrentHp}/{MaxHp}";
+    }
+
     private const int PlayerMaxHp = 20;
     private const int DemonMaxHp = 16;
 
-    private bool isActive;
-    private int playerHp = PlayerMaxHp;
-    private int demonHp = DemonMaxHp;
+    private BattleState battleState;
+    private CombatantStats playerStats;
+    private CombatantStats demonStats;
     private bool playerGuarding;
     private float enemyTurnDelay;
-    private bool battleEnded;
     private bool playerWon;
-    private GameObject demon;
+    private GameObject demonObject;
 
-    public bool IsActive => isActive;
+    public bool IsActive => battleState == BattleState.Active || battleState == BattleState.Resolved;
 
     private void Awake()
     {
@@ -27,21 +61,22 @@ public class BattleManager : MonoBehaviour
         }
 
         Instance = this;
+        playerStats = new CombatantStats("Player", PlayerMaxHp);
+        demonStats = new CombatantStats("Demon", DemonMaxHp);
     }
 
     public void StartBattle()
     {
-        if (isActive)
+        if (battleState == BattleState.Active || battleState == BattleState.Resolved)
         {
             return;
         }
 
-        demon = GameObject.Find("DemonEncounter");
-        isActive = true;
-        battleEnded = false;
+        demonObject = GameObject.Find("DemonEncounter");
+        battleState = BattleState.Active;
         playerWon = false;
-        playerHp = PlayerMaxHp;
-        demonHp = DemonMaxHp;
+        playerStats.Reset();
+        demonStats.Reset();
         playerGuarding = false;
         enemyTurnDelay = 0f;
         Debug.Log("Battle started against the demon.");
@@ -49,7 +84,7 @@ public class BattleManager : MonoBehaviour
 
     private void Update()
     {
-        if (!isActive)
+        if (battleState != BattleState.Active)
         {
             return;
         }
@@ -66,7 +101,7 @@ public class BattleManager : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!isActive)
+        if (battleState == BattleState.Inactive)
         {
             return;
         }
@@ -78,33 +113,32 @@ public class BattleManager : MonoBehaviour
         try
         {
             GUILayout.Space(28f);
-            GUILayout.Label($"Player HP: {playerHp}/{PlayerMaxHp}");
-            GUILayout.Label($"Demon HP: {demonHp}/{DemonMaxHp}");
+            GUILayout.Label(playerStats.HpText);
+            GUILayout.Label(demonStats.HpText);
 
-            if (battleEnded)
+            if (battleState == BattleState.Resolved)
             {
-                GUILayout.Label("The demon stands down.");
+                GUILayout.Label(playerWon ? "The demon stands down." : "The player withdraws from the fight.");
                 if (GUILayout.Button("Return to the overworld"))
                 {
-                    isActive = false;
-                    battleEnded = false;
+                    battleState = BattleState.Inactive;
 
-                    if (playerWon && demon != null)
+                    if (playerWon && demonObject != null)
                     {
-                        Destroy(demon);
-                        demon = null;
+                        Destroy(demonObject);
+                        demonObject = null;
                     }
                 }
                 return;
             }
 
-            if (demonHp <= 0)
+            if (!demonStats.IsAlive)
             {
                 EndBattle(true);
                 return;
             }
 
-            if (playerHp <= 0)
+            if (!playerStats.IsAlive)
             {
                 EndBattle(false);
                 return;
@@ -135,10 +169,10 @@ public class BattleManager : MonoBehaviour
     private void PlayerAttack()
     {
         var damage = Random.Range(4, 9);
-        demonHp = Mathf.Max(0, demonHp - damage);
+        demonStats.ApplyDamage(damage);
         Debug.Log($"Player hits for {damage} damage.");
 
-        if (demonHp <= 0)
+        if (!demonStats.IsAlive)
         {
             EndBattle(true);
             return;
@@ -161,26 +195,24 @@ public class BattleManager : MonoBehaviour
             playerGuarding = false;
         }
 
-        playerHp = Mathf.Max(0, playerHp - damage);
+        playerStats.ApplyDamage(damage);
         Debug.Log($"Demon hits for {damage} damage.");
 
-        if (playerHp <= 0)
+        if (!playerStats.IsAlive)
         {
             EndBattle(false);
-            return;
         }
     }
 
     private void EndBattle(bool playerWonResult)
     {
-        battleEnded = true;
-        isActive = true;
+        battleState = BattleState.Resolved;
         playerWon = playerWonResult;
 
-        if (playerWonResult && demon != null)
+        if (playerWonResult && demonObject != null)
         {
-            Destroy(demon);
-            demon = null;
+            Destroy(demonObject);
+            demonObject = null;
         }
 
         Debug.Log(playerWonResult ? "Victory over the demon." : "The player withdraws from the fight.");
