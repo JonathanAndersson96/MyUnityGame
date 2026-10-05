@@ -47,6 +47,7 @@ public class GridPrototypeBootstrap : MonoBehaviour
         CreateGrid();
         CreateBlockedTerrain();
         CreatePartyManager();
+        CreatePartyMenu();
         CreateBattleManager();
         CreatePlayer();
         CreateDemon();
@@ -124,6 +125,13 @@ public class GridPrototypeBootstrap : MonoBehaviour
         var partyManagerObject = new GameObject("PartyManager");
         partyManagerObject.transform.SetParent(transform);
         partyManagerObject.AddComponent<PartyManager>();
+    }
+
+    private void CreatePartyMenu()
+    {
+        var partyMenuObject = new GameObject("PartyMenu");
+        partyMenuObject.transform.SetParent(transform);
+        partyMenuObject.AddComponent<PartyMenu>();
     }
 
     private void CreateBattleManager()
