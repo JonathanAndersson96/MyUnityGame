@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class GridEncounterTrigger : MonoBehaviour
 {
@@ -27,7 +28,8 @@ public class GridEncounterTrigger : MonoBehaviour
             var material = GetComponent<Renderer>().material;
             material.SetColor("_BaseColor", new Color(1f, 0.38f, 0.38f));
 
-            if (Input.GetKeyDown(KeyCode.E))
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
             {
                 Debug.Log("Encounter triggered: demon in the wild. Battle state ready.");
             }

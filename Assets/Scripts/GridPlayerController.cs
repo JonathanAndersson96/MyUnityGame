@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class GridPlayerController : MonoBehaviour
 {
@@ -21,21 +22,27 @@ public class GridPlayerController : MonoBehaviour
             return;
         }
 
+        var keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return;
+        }
+
         Vector2Int moveDirection = Vector2Int.zero;
 
-        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+        if (keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame)
         {
             moveDirection = new Vector2Int(0, 1);
         }
-        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+        else if (keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame)
         {
             moveDirection = new Vector2Int(0, -1);
         }
-        else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+        else if (keyboard.aKey.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame)
         {
             moveDirection = new Vector2Int(-1, 0);
         }
-        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+        else if (keyboard.dKey.wasPressedThisFrame || keyboard.rightArrowKey.wasPressedThisFrame)
         {
             moveDirection = new Vector2Int(1, 0);
         }
