@@ -13,6 +13,8 @@ public class BattleManager : MonoBehaviour
     private bool playerGuarding;
     private float enemyTurnDelay;
     private bool battleEnded;
+    private bool playerWon;
+    private GameObject demon;
 
     public bool IsActive => isActive;
 
@@ -34,8 +36,10 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
+        demon = GameObject.Find("DemonEncounter");
         isActive = true;
         battleEnded = false;
+        playerWon = false;
         playerHp = PlayerMaxHp;
         demonHp = DemonMaxHp;
         playerGuarding = false;
@@ -81,6 +85,13 @@ public class BattleManager : MonoBehaviour
             if (GUILayout.Button("Return to the overworld"))
             {
                 isActive = false;
+                battleEnded = false;
+
+                if (playerWon && demon != null)
+                {
+                    Destroy(demon);
+                    demon = null;
+                }
             }
             return;
         }
@@ -155,10 +166,18 @@ public class BattleManager : MonoBehaviour
         }
     }
 
-    private void EndBattle(bool playerWon)
+    private void EndBattle(bool playerWonResult)
     {
         battleEnded = true;
         isActive = true;
-        Debug.Log(playerWon ? "Victory over the demon." : "The player withdraws from the fight.");
+        playerWon = playerWonResult;
+
+        if (playerWonResult && demon != null)
+        {
+            Destroy(demon);
+            demon = null;
+        }
+
+        Debug.Log(playerWonResult ? "Victory over the demon." : "The player withdraws from the fight.");
     }
 }
