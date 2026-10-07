@@ -15,9 +15,18 @@ namespace MyUnityGame.Gameplay
             Resolved
         }
 
+        private enum BattleMenu
+        {
+            Main,
+            Fight,
+            Switch,
+            Bag
+        }
+
         private const int DemonMaxHp = 16;
 
         private BattleState battleState;
+        private BattleMenu battleMenu;
         private PartyMember playerMember;
         private PartyMember demonMember;
         private bool playerGuarding;
@@ -61,13 +70,8 @@ namespace MyUnityGame.Gameplay
             }
 
             demonObject = GameObject.Find("DemonEncounter");
-            playerMember = GetActivePartyMember();
+            playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
             demonMember = new PartyMember("Demon", DemonMaxHp);
-
-            if (playerMember == null)
-            {
-                playerMember = new PartyMember("Player", 20);
-            }
 
             battleState = BattleState.Active;
             playerWon = false;
@@ -75,6 +79,7 @@ namespace MyUnityGame.Gameplay
             demonMember.Reset();
             playerGuarding = false;
             enemyTurnDelay = 0f;
+            battleMenu = BattleMenu.Main;
             Debug.Log("Battle started against the demon.");
         }
 
@@ -102,14 +107,30 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
-            var box = new Rect(Screen.width * 0.5f - 220f, Screen.height * 0.5f - 140f, 440f, 280f);
+            if (playerMember == null)
+            {
+                playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
+            }
+
+            if (demonMember == null)
+            {
+                demonMember = new PartyMember("Demon", DemonMaxHp);
+            }
+
+            var boxWidth = Mathf.Min(440f, Mathf.Max(220f, Screen.width - 32f));
+            var boxHeight = Mathf.Min(360f, Mathf.Max(220f, Screen.height - 32f));
+            var box = new Rect(
+                (Screen.width - boxWidth) * 0.5f,
+                (Screen.height - boxHeight) * 0.5f,
+                boxWidth,
+                boxHeight);
+            var content = new Rect(box.x + 20f, box.y + 38f, box.width - 40f, box.height - 54f);
+            var buttonWidth = (content.width - 8f) * 0.5f;
             GUI.Box(box, "Demon Encounter");
 
-            GUILayout.BeginArea(box);
+            GUILayout.BeginArea(content);
             try
             {
-                GUILayout.Space(28f);
-
                 if (PartyManager.Instance != null)
                 {
                     foreach (var member in PartyManager.Instance.Members)
@@ -122,12 +143,12 @@ namespace MyUnityGame.Gameplay
                     GUILayout.Label(playerMember.HpText);
                 }
 
-                GUILayout.Label(demonMember.HpText);
+                GUILayout.Label(demonMember.HpText, GUILayout.Height(24f));
 
                 if (battleState == BattleState.Resolved)
                 {
-                    GUILayout.Label(playerWon ? "The demon stands down." : "The player withdraws from the fight.");
-                    if (GUILayout.Button("Return to the overworld"))
+                    GUILayout.Label(playerWon ? "The demon stands down." : "The player withdraws from the fight.", GUILayout.Height(30f));
+                    if (GUILayout.Button("Return to the overworld", GUILayout.Height(42f)))
                     {
                         battleState = BattleState.Inactive;
 
@@ -154,25 +175,131 @@ namespace MyUnityGame.Gameplay
                     return;
                 }
 
-                if (GUILayout.Button("Attack"))
+                if (enemyTurnDelay > 0f)
                 {
-                    PlayerAttack();
+                    GUILayout.Label("The demon is preparing to attack...");
+                    return;
                 }
 
-                if (GUILayout.Button("Guard"))
+                switch (battleMenu)
                 {
-                    playerGuarding = true;
-                    StartEnemyTurn();
-                }
-
-                if (GUILayout.Button("Flee"))
-                {
-                    EndBattle(false);
+                    case BattleMenu.Main:
+                        DrawMainMenu(buttonWidth);
+                        break;
+                    case BattleMenu.Fight:
+                        DrawFightMenu();
+                        break;
+                    case BattleMenu.Switch:
+                        DrawSwitchMenu();
+                        break;
+                    case BattleMenu.Bag:
+                        DrawBagMenu();
+                        break;
                 }
             }
             finally
             {
                 GUILayout.EndArea();
+            }
+        }
+
+        private void DrawMainMenu(float buttonWidth)
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Fight", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Fight;
+            }
+
+            if (GUILayout.Button("Flee", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
+            {
+                EndBattle(false);
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Switch", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Switch;
+            }
+
+            if (GUILayout.Button("Bag", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Bag;
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        private void DrawFightMenu()
+        {
+            if (GUILayout.Button("Attack", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                PlayerAttack();
+            }
+
+            if (GUILayout.Button("Guard", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                playerGuarding = true;
+                StartEnemyTurn();
+            }
+
+            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Main;
+            }
+        }
+
+        private void DrawSwitchMenu()
+        {
+            var partyManager = PartyManager.Instance;
+            if (partyManager == null || partyManager.Members.Count == 0)
+            {
+                GUILayout.Label("No party members are available to switch to.");
+            }
+            else
+            {
+                for (var i = 0; i < partyManager.Members.Count; i++)
+                {
+                    var member = partyManager.Members[i];
+                    var label = $"{member.Name} HP: {member.CurrentHp}/{member.MaxHp}";
+
+                    if (member == playerMember)
+                    {
+                        GUILayout.Label($"{label} (Active)");
+                    }
+                    else if (!member.IsAlive)
+                    {
+                        GUILayout.Label($"{label} (Unable to fight)");
+                    }
+                    else if (GUILayout.Button(label, GUILayout.ExpandWidth(true), GUILayout.Height(38f)))
+                    {
+                        partyManager.SetActiveMember(i);
+                        playerMember = member;
+
+                        if (GameManager.Instance != null)
+                        {
+                            GameManager.Instance.SetActiveMember(i);
+                        }
+
+                        battleMenu = BattleMenu.Main;
+                        StartEnemyTurn();
+                        return;
+                    }
+                }
+            }
+
+            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Main;
+            }
+        }
+
+        private void DrawBagMenu()
+        {
+            GUILayout.Label("Your bag is empty.");
+            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                battleMenu = BattleMenu.Main;
             }
         }
 
@@ -188,6 +315,7 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
+            battleMenu = BattleMenu.Main;
             StartEnemyTurn();
         }
 
@@ -198,6 +326,11 @@ namespace MyUnityGame.Gameplay
 
         private void EnemyTurn()
         {
+            if (playerMember == null)
+            {
+                playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
+            }
+
             var damage = Random.Range(3, 7);
             if (playerGuarding)
             {
@@ -216,8 +349,16 @@ namespace MyUnityGame.Gameplay
 
         private void EndBattle(bool playerWonResult)
         {
+            if (battleState == BattleState.Resolved)
+            {
+                return;
+            }
+
             battleState = BattleState.Resolved;
             playerWon = playerWonResult;
+            playerGuarding = false;
+            enemyTurnDelay = 0f;
+            battleMenu = BattleMenu.Main;
 
             if (GameManager.Instance != null)
             {

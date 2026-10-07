@@ -39,7 +39,8 @@ namespace MyUnityGame.Gameplay
             var keyboard = Keyboard.current;
             if (inRange && keyboard != null && keyboard.eKey.wasPressedThisFrame)
             {
-                if (SceneManager.GetSceneByName("BattleScene").IsValid())
+                const string battleScenePath = "Assets/Scenes/BattleScene.unity";
+                if (SceneUtility.GetBuildIndexByScenePath(battleScenePath) >= 0)
                 {
                     var gameManager = MyUnityGame.Core.GameManager.Instance;
                     if (gameManager != null)
@@ -51,7 +52,7 @@ namespace MyUnityGame.Gameplay
                 }
                 else
                 {
-                    Debug.LogWarning("BattleScene is not available yet. Add the BattleScene scene to the project.");
+                    Debug.LogWarning($"Battle scene is not available in Build Settings: {battleScenePath}");
                 }
             }
         }

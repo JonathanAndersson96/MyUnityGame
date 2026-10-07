@@ -1,12 +1,14 @@
 using MyUnityGame.Core;
 using MyUnityGame.UI;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MyUnityGame.Gameplay
 {
     public class PartyMenu : MonoBehaviour
     {
         private PartyRosterPanel panel;
+        private bool isOpen;
 
         private void Awake()
         {
@@ -18,15 +20,20 @@ namespace MyUnityGame.Gameplay
 
         private void Update()
         {
-            if (panel != null)
+            if (panel != null || Keyboard.current == null)
             {
                 return;
+            }
+
+            if (Keyboard.current.tabKey.wasPressedThisFrame)
+            {
+                isOpen = !isOpen;
             }
         }
 
         private void OnGUI()
         {
-            if (panel != null)
+            if (panel != null || !isOpen)
             {
                 return;
             }
