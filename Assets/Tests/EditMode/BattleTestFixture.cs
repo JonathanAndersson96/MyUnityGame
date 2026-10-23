@@ -37,6 +37,9 @@ namespace MyUnityGame.Battle.Tests
             int power = 60) =>
             Track(MoveDefinition.Create($"{type} move", type, category, power));
 
+        protected Demon CreateDemon(DemonType type, StatBlock baseStats, int level, params MoveDefinition[] moves) =>
+            new Demon(CreateSpecies(type, baseStats), level, moves);
+
         private T Track<T>(T createdObject) where T : Object
         {
             createdObjects.Add(createdObject);
