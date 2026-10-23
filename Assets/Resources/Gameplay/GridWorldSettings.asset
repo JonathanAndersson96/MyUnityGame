@@ -25,8 +25,8 @@ MonoBehaviour:
   - {x: 4, y: 4}
   - {x: 0, y: 4}
   - {x: 4, y: 0}
-  idleSpriteResourcePath: Characters/MainCharacter
-  downWalkResourcePath: Characters/Walk
-  upWalkResourcePath: Characters/WalkUp
-  leftWalkResourcePath: Characters/WalkLeft
-  rightWalkResourcePath: Characters/WalkRight
+  idleSpriteResourcePath: Characters/BronzeMale/Idle
+  downWalkResourcePath: Characters/BronzeMale/WalkDown
+  upWalkResourcePath: Characters/BronzeMale/WalkUp
+  leftWalkResourcePath: Characters/BronzeMale/WalkLeft
+  rightWalkResourcePath: Characters/BronzeMale/WalkRight
