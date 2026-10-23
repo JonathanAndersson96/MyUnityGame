@@ -6,7 +6,7 @@ namespace MyUnityGame.Data
     {
         Exploration,
         Battle,
-        Party
+        Menu
     }
 
     [System.Serializable]
@@ -18,17 +18,37 @@ namespace MyUnityGame.Data
 
         public void Reset()
         {
-            CurrentHp = MaxHp;
+            CurrentHp = MaxHp > 0 ? MaxHp : 0;
         }
 
         public void ApplyDamage(int amount)
         {
-            CurrentHp = System.Math.Max(0, CurrentHp - amount);
+            if (MaxHp <= 0)
+            {
+                CurrentHp = 0;
+                return;
+            }
+
+            CurrentHp = System.Math.Max(0, System.Math.Min(MaxHp, CurrentHp));
+            if (amount > 0)
+            {
+                CurrentHp = amount >= CurrentHp ? 0 : CurrentHp - amount;
+            }
         }
 
         public void Heal(int amount)
         {
-            CurrentHp = System.Math.Min(MaxHp, CurrentHp + amount);
+            if (MaxHp <= 0)
+            {
+                CurrentHp = 0;
+                return;
+            }
+
+            CurrentHp = System.Math.Max(0, System.Math.Min(MaxHp, CurrentHp));
+            if (amount > 0)
+            {
+                CurrentHp = amount >= MaxHp - CurrentHp ? MaxHp : CurrentHp + amount;
+            }
         }
 
         public bool IsAlive => CurrentHp > 0;
@@ -49,15 +69,7 @@ namespace MyUnityGame.Data
                 return null;
             }
 
-            if (ActiveMemberIndex < 0)
-            {
-                ActiveMemberIndex = 0;
-            }
-            else if (ActiveMemberIndex >= Members.Count)
-            {
-                ActiveMemberIndex = Members.Count - 1;
-            }
-
+            ActiveMemberIndex = ClampActiveMemberIndex(ActiveMemberIndex);
             return Members[ActiveMemberIndex];
         }
 
@@ -68,15 +80,7 @@ namespace MyUnityGame.Data
                 return;
             }
 
-            ActiveMemberIndex = index;
-            if (ActiveMemberIndex < 0)
-            {
-                ActiveMemberIndex = 0;
-            }
-            else if (ActiveMemberIndex >= Members.Count)
-            {
-                ActiveMemberIndex = Members.Count - 1;
-            }
+            ActiveMemberIndex = ClampActiveMemberIndex(index);
         }
 
         public void InitializeDefaults()
@@ -86,21 +90,43 @@ namespace MyUnityGame.Data
                 Members = new List<PartyMemberData>();
             }
 
-            if (Members.Count != 0)
+            for (var i = Members.Count - 1; i >= 0; i--)
             {
-                return;
+                var member = Members[i];
+                if (member == null || string.IsNullOrWhiteSpace(member.Name) || member.MaxHp <= 0)
+                {
+                    Members.RemoveAt(i);
+                    continue;
+                }
+
+                member.CurrentHp = System.Math.Max(0, System.Math.Min(member.MaxHp, member.CurrentHp));
             }
 
-            Members = new List<PartyMemberData>
+            if (Members.Count == 0)
             {
-                new PartyMemberData { Name = "Liora", MaxHp = 20, CurrentHp = 20 },
-                new PartyMemberData { Name = "Neris", MaxHp = 18, CurrentHp = 18 },
-                new PartyMemberData { Name = "Veyra", MaxHp = 22, CurrentHp = 22 },
-            };
+                Members = new List<PartyMemberData>
+                {
+                    new PartyMemberData { Name = "Liora", MaxHp = 20, CurrentHp = 20 },
+                    new PartyMemberData { Name = "Neris", MaxHp = 18, CurrentHp = 18 },
+                    new PartyMemberData { Name = "Veyra", MaxHp = 22, CurrentHp = 22 },
+                };
 
-            ActiveMemberIndex = 0;
-            CurrentPhase = GamePhase.Exploration;
-            CurrentEncounter = null;
+                ActiveMemberIndex = 0;
+                CurrentPhase = GamePhase.Exploration;
+                CurrentEncounter = null;
+            }
+
+            ActiveMemberIndex = ClampActiveMemberIndex(ActiveMemberIndex);
+            if (!System.Enum.IsDefined(typeof(GamePhase), CurrentPhase))
+            {
+                CurrentPhase = GamePhase.Exploration;
+                CurrentEncounter = null;
+            }
+        }
+
+        private int ClampActiveMemberIndex(int index)
+        {
+            return System.Math.Max(0, System.Math.Min(index, Members.Count - 1));
         }
     }
 }
