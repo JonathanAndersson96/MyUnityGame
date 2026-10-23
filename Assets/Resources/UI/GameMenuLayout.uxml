@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="GameMenuStyles.uss" />
+    <ui:VisualElement name="menu-root" class="menu-root" picking-mode="Ignore">
+        <ui:VisualElement name="page" class="menu-panel page">
+            <ui:Label name="page-title" class="page__title" />
+            <ui:VisualElement name="page-content" class="page__content" />
+            <ui:Button name="page-back" text="Back" class="menu-button page__back" />
+        </ui:VisualElement>
+        <ui:VisualElement name="entry-list" class="menu-panel entry-list" />
+    </ui:VisualElement>
+</ui:UXML>

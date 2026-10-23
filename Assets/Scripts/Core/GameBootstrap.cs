@@ -1,6 +1,7 @@
 using MyUnityGame.Gameplay;
 using MyUnityGame.UI;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace MyUnityGame.Core
 {
@@ -9,16 +10,29 @@ namespace MyUnityGame.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            EnsureCoreServices();
+        }
+
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            EnsureCoreServices();
+        }
+
+        private static void EnsureCoreServices()
+        {
             if (Object.FindAnyObjectByType<GameManager>() == null)
             {
                 var managerObject = new GameObject("GameManager");
                 managerObject.AddComponent<GameManager>();
             }
 
-            if (Object.FindAnyObjectByType<PartyRosterPanel>() == null)
+            if (Object.FindAnyObjectByType<GameMenu>() == null)
             {
-                var panelObject = new GameObject("PartyRosterPanel");
-                panelObject.AddComponent<PartyRosterPanel>();
+                var menuObject = new GameObject("GameMenu");
+                menuObject.AddComponent<GameMenu>();
+                Object.DontDestroyOnLoad(menuObject);
             }
         }
     }
