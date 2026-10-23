@@ -1,13 +1,14 @@
+using System;
+using System.Collections.Generic;
 using MyUnityGame.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace MyUnityGame.Gameplay
 {
+    [RequireComponent(typeof(BattleHud))]
     public class BattleManager : MonoBehaviour
     {
-        public static BattleManager Instance { get; private set; }
-
         private enum BattleState
         {
             Inactive,
@@ -15,26 +16,28 @@ namespace MyUnityGame.Gameplay
             Resolved
         }
 
-        private enum BattleMenu
-        {
-            Main,
-            Fight,
-            Switch,
-            Bag
-        }
+        private const string RulesResourcePath = "Gameplay/BattleRules";
 
-        private const int DemonMaxHp = 16;
+        public static BattleManager Instance { get; private set; }
+
+        [SerializeField] private BattleRules rules;
 
         private BattleState battleState;
-        private BattleMenu battleMenu;
         private PartyMember playerMember;
         private PartyMember demonMember;
         private bool playerGuarding;
-        private float enemyTurnDelay;
+        private float enemyTurnTimer;
         private bool playerWon;
         private GameObject demonObject;
 
         public bool IsActive => battleState == BattleState.Active || battleState == BattleState.Resolved;
+        public bool IsResolved => battleState == BattleState.Resolved;
+        public bool PlayerWon => playerWon;
+        public bool IsEnemyTurnPending => enemyTurnTimer > 0f;
+        public PartyMember PlayerMember => playerMember;
+        public PartyMember DemonMember => demonMember;
+        public IReadOnlyList<PartyMember> PartyMembers =>
+            PartyManager.Instance != null ? PartyManager.Instance.Members : null;
 
         private void Awake()
         {
@@ -45,269 +48,104 @@ namespace MyUnityGame.Gameplay
             }
 
             Instance = this;
-        }
-
-        private PartyMember GetActivePartyMember()
-        {
-            if (PartyManager.Instance == null)
+            if (rules == null)
             {
-                return null;
+                rules = Resources.Load<BattleRules>(RulesResourcePath);
             }
 
-            return PartyManager.Instance.ActiveMember;
+            if (rules == null)
+            {
+                Debug.LogError($"Battle rules are missing from Resources/{RulesResourcePath}.", this);
+                DisableManager();
+            }
+            else if (!rules.TryValidate(out var validationError))
+            {
+                Debug.LogError($"Battle rules are invalid: {validationError}", rules);
+                DisableManager();
+            }
         }
 
-        public void StartBattle()
+        public bool StartBattle(string encounterName = "Demon")
         {
+            if (!enabled || rules == null)
+            {
+                return false;
+            }
+
             if (battleState == BattleState.Active || battleState == BattleState.Resolved)
             {
-                return;
+                return false;
             }
 
-            if (GameManager.Instance != null)
+            if (string.IsNullOrWhiteSpace(encounterName))
             {
-                GameManager.Instance.StartBattle("Demon");
+                Debug.LogError("Cannot start a battle without an encounter name.", this);
+                return false;
             }
 
-            demonObject = GameObject.Find("DemonEncounter");
-            playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
-            demonMember = new PartyMember("Demon", DemonMaxHp);
+            var party = PartyManager.Instance;
+            playerMember = party != null ? party.ActiveMember : null;
+            if (party != null && (playerMember == null || !playerMember.IsAlive))
+            {
+                playerMember = null;
+                for (var i = 0; i < party.Members.Count; i++)
+                {
+                    if (party.Members[i] != null && party.Members[i].IsAlive)
+                    {
+                        party.SetActiveMember(i);
+                        playerMember = party.ActiveMember;
+                        break;
+                    }
+                }
+
+                if (playerMember == null)
+                {
+                    demonMember = new PartyMember(encounterName, rules.OpponentMaxHp);
+                    GameManager.Instance?.StartBattle(encounterName);
+                    Debug.LogWarning("The party has no living members and cannot fight.", this);
+                    EndBattle(false);
+                    return true;
+                }
+            }
+
+            playerMember ??= new PartyMember("Player", 20);
+            GameManager.Instance?.StartBattle(encounterName);
+            demonMember = new PartyMember(encounterName, rules.OpponentMaxHp);
 
             battleState = BattleState.Active;
             playerWon = false;
-            playerMember.Reset();
             demonMember.Reset();
             playerGuarding = false;
-            enemyTurnDelay = 0f;
-            battleMenu = BattleMenu.Main;
-            Debug.Log("Battle started against the demon.");
+            enemyTurnTimer = 0f;
+            SyncPartyState();
+            Debug.Log($"Battle started against {encounterName}.", this);
+            return true;
         }
 
         private void Update()
         {
-            if (battleState != BattleState.Active)
+            if (battleState != BattleState.Active || enemyTurnTimer <= 0f)
             {
                 return;
             }
 
-            if (enemyTurnDelay > 0f)
+            enemyTurnTimer = Mathf.Max(0f, enemyTurnTimer - Time.deltaTime);
+            if (enemyTurnTimer <= 0f)
             {
-                enemyTurnDelay -= Time.deltaTime;
-                if (enemyTurnDelay <= 0f)
-                {
-                    EnemyTurn();
-                }
+                PerformEnemyTurn();
             }
         }
 
-        private void OnGUI()
+        public void Attack()
         {
-            if (battleState == BattleState.Inactive)
+            if (battleState != BattleState.Active || IsEnemyTurnPending)
             {
                 return;
             }
 
-            if (playerMember == null)
-            {
-                playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
-            }
-
-            if (demonMember == null)
-            {
-                demonMember = new PartyMember("Demon", DemonMaxHp);
-            }
-
-            var boxWidth = Mathf.Min(440f, Mathf.Max(220f, Screen.width - 32f));
-            var boxHeight = Mathf.Min(360f, Mathf.Max(220f, Screen.height - 32f));
-            var box = new Rect(
-                (Screen.width - boxWidth) * 0.5f,
-                (Screen.height - boxHeight) * 0.5f,
-                boxWidth,
-                boxHeight);
-            var content = new Rect(box.x + 20f, box.y + 38f, box.width - 40f, box.height - 54f);
-            var buttonWidth = (content.width - 8f) * 0.5f;
-            GUI.Box(box, "Demon Encounter");
-
-            GUILayout.BeginArea(content);
-            try
-            {
-                if (PartyManager.Instance != null)
-                {
-                    foreach (var member in PartyManager.Instance.Members)
-                    {
-                        GUILayout.Label(member.HpText);
-                    }
-                }
-                else if (playerMember != null)
-                {
-                    GUILayout.Label(playerMember.HpText);
-                }
-
-                GUILayout.Label(demonMember.HpText, GUILayout.Height(24f));
-
-                if (battleState == BattleState.Resolved)
-                {
-                    GUILayout.Label(playerWon ? "The demon stands down." : "The player withdraws from the fight.", GUILayout.Height(30f));
-                    if (GUILayout.Button("Return to the overworld", GUILayout.Height(42f)))
-                    {
-                        battleState = BattleState.Inactive;
-
-                        if (playerWon && demonObject != null)
-                        {
-                            Destroy(demonObject);
-                            demonObject = null;
-                        }
-
-                        SceneManager.LoadScene("SampleScene");
-                    }
-                    return;
-                }
-
-                if (!demonMember.IsAlive)
-                {
-                    EndBattle(true);
-                    return;
-                }
-
-                if (!playerMember.IsAlive)
-                {
-                    EndBattle(false);
-                    return;
-                }
-
-                if (enemyTurnDelay > 0f)
-                {
-                    GUILayout.Label("The demon is preparing to attack...");
-                    return;
-                }
-
-                switch (battleMenu)
-                {
-                    case BattleMenu.Main:
-                        DrawMainMenu(buttonWidth);
-                        break;
-                    case BattleMenu.Fight:
-                        DrawFightMenu();
-                        break;
-                    case BattleMenu.Switch:
-                        DrawSwitchMenu();
-                        break;
-                    case BattleMenu.Bag:
-                        DrawBagMenu();
-                        break;
-                }
-            }
-            finally
-            {
-                GUILayout.EndArea();
-            }
-        }
-
-        private void DrawMainMenu(float buttonWidth)
-        {
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Fight", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Fight;
-            }
-
-            if (GUILayout.Button("Flee", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                EndBattle(false);
-            }
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Switch", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Switch;
-            }
-
-            if (GUILayout.Button("Bag", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Bag;
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        private void DrawFightMenu()
-        {
-            if (GUILayout.Button("Attack", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                PlayerAttack();
-            }
-
-            if (GUILayout.Button("Guard", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                playerGuarding = true;
-                StartEnemyTurn();
-            }
-
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Main;
-            }
-        }
-
-        private void DrawSwitchMenu()
-        {
-            var partyManager = PartyManager.Instance;
-            if (partyManager == null || partyManager.Members.Count == 0)
-            {
-                GUILayout.Label("No party members are available to switch to.");
-            }
-            else
-            {
-                for (var i = 0; i < partyManager.Members.Count; i++)
-                {
-                    var member = partyManager.Members[i];
-                    var label = $"{member.Name} HP: {member.CurrentHp}/{member.MaxHp}";
-
-                    if (member == playerMember)
-                    {
-                        GUILayout.Label($"{label} (Active)");
-                    }
-                    else if (!member.IsAlive)
-                    {
-                        GUILayout.Label($"{label} (Unable to fight)");
-                    }
-                    else if (GUILayout.Button(label, GUILayout.ExpandWidth(true), GUILayout.Height(38f)))
-                    {
-                        partyManager.SetActiveMember(i);
-                        playerMember = member;
-
-                        if (GameManager.Instance != null)
-                        {
-                            GameManager.Instance.SetActiveMember(i);
-                        }
-
-                        battleMenu = BattleMenu.Main;
-                        StartEnemyTurn();
-                        return;
-                    }
-                }
-            }
-
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Main;
-            }
-        }
-
-        private void DrawBagMenu()
-        {
-            GUILayout.Label("Your bag is empty.");
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                battleMenu = BattleMenu.Main;
-            }
-        }
-
-        private void PlayerAttack()
-        {
-            var damage = Random.Range(4, 9);
+            var damage = UnityEngine.Random.Range(rules.PlayerMinimumDamage, rules.PlayerMaximumDamage + 1);
             demonMember.ApplyDamage(damage);
-            Debug.Log($"Player hits for {damage} damage.");
+            Debug.Log($"Player hits for {damage} damage.", this);
 
             if (!demonMember.IsAlive)
             {
@@ -315,31 +153,121 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
-            battleMenu = BattleMenu.Main;
             StartEnemyTurn();
+        }
+
+        public void Guard()
+        {
+            if (battleState != BattleState.Active || IsEnemyTurnPending)
+            {
+                return;
+            }
+
+            playerGuarding = true;
+            StartEnemyTurn();
+        }
+
+        public void Flee()
+        {
+            if (battleState == BattleState.Active)
+            {
+                EndBattle(false);
+            }
+        }
+
+        public bool SwitchMember(int index)
+        {
+            var party = PartyManager.Instance;
+            if (battleState != BattleState.Active || IsEnemyTurnPending || party == null ||
+                index < 0 || index >= party.Members.Count)
+            {
+                return false;
+            }
+
+            var member = party.Members[index];
+            if (member == null || member == playerMember || !member.IsAlive)
+            {
+                return false;
+            }
+
+            playerMember = member;
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetActiveMember(index);
+            }
+            else
+            {
+                party.SetActiveMember(index);
+            }
+            StartEnemyTurn();
+            return true;
+        }
+
+        public void SetEncounterObject(GameObject encounterObject)
+        {
+            if (battleState != BattleState.Inactive)
+            {
+                throw new InvalidOperationException("The encounter object can only be set before a battle starts.");
+            }
+
+            demonObject = encounterObject != null
+                ? encounterObject
+                : throw new ArgumentNullException(nameof(encounterObject));
+        }
+
+        public void ReturnToWorld()
+        {
+            if (!IsResolved)
+            {
+                return;
+            }
+
+            const string worldScenePath = "Assets/Scenes/SampleScene.unity";
+            var worldSceneIndex = SceneUtility.GetBuildIndexByScenePath(worldScenePath);
+            if (worldSceneIndex < 0)
+            {
+                Debug.LogError($"World scene is not available in Build Settings: {worldScenePath}", this);
+                return;
+            }
+
+            battleState = BattleState.Inactive;
+            if (playerWon && demonObject != null)
+            {
+                Destroy(demonObject);
+                demonObject = null;
+            }
+
+            SceneManager.LoadScene(worldSceneIndex);
         }
 
         private void StartEnemyTurn()
         {
-            enemyTurnDelay = 0.6f;
+            enemyTurnTimer = rules.EnemyTurnDelay;
+            if (enemyTurnTimer <= 0f)
+            {
+                PerformEnemyTurn();
+            }
         }
 
-        private void EnemyTurn()
+        private void PerformEnemyTurn()
         {
             if (playerMember == null)
             {
-                playerMember = GetActivePartyMember() ?? new PartyMember("Player", 20);
+                Debug.LogError("Cannot perform an enemy turn without an active party member.", this);
+                EndBattle(false);
+                return;
             }
 
-            var damage = Random.Range(3, 7);
+            var damage = UnityEngine.Random.Range(rules.EnemyMinimumDamage, rules.EnemyMaximumDamage + 1);
             if (playerGuarding)
             {
-                damage = Mathf.Max(1, damage / 2);
+                damage = Mathf.Max(rules.MinimumGuardDamage, damage / rules.GuardDamageDivisor);
                 playerGuarding = false;
             }
 
             playerMember.ApplyDamage(damage);
-            Debug.Log($"Demon hits for {damage} damage.");
+            SyncPartyState();
+            Debug.Log($"Demon hits for {damage} damage.", this);
 
             if (!playerMember.IsAlive)
             {
@@ -347,7 +275,7 @@ namespace MyUnityGame.Gameplay
             }
         }
 
-        private void EndBattle(bool playerWonResult)
+        private void EndBattle(bool won)
         {
             if (battleState == BattleState.Resolved)
             {
@@ -355,23 +283,46 @@ namespace MyUnityGame.Gameplay
             }
 
             battleState = BattleState.Resolved;
-            playerWon = playerWonResult;
+            playerWon = won;
             playerGuarding = false;
-            enemyTurnDelay = 0f;
-            battleMenu = BattleMenu.Main;
+            enemyTurnTimer = 0f;
 
             if (GameManager.Instance != null)
             {
-                GameManager.Instance.EndBattle(playerWonResult);
+                GameManager.Instance.EndBattle(won);
+                SyncPartyState();
             }
 
-            if (playerWonResult && demonObject != null)
+            if (won && demonObject != null)
             {
                 Destroy(demonObject);
                 demonObject = null;
             }
 
-            Debug.Log(playerWonResult ? "Victory over the demon." : "The player withdraws from the fight.");
+            Debug.Log(won ? "Victory over the demon." : "The player withdraws from the fight.", this);
+        }
+
+        private void SyncPartyState()
+        {
+            GameManager.Instance?.SyncFromRuntimeParty();
+        }
+
+        private void DisableManager()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+
+            enabled = false;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
     }
 }

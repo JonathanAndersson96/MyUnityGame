@@ -8,10 +8,24 @@ namespace MyUnityGame.Gameplay
     {
         private void Start()
         {
+            if (PartyManager.Instance == null)
+            {
+                var partyManagerObject = new GameObject("PartyManager");
+                partyManagerObject.AddComponent<PartyManager>();
+            }
+
             if (BattleManager.Instance == null)
             {
                 var battleObject = new GameObject("BattleManager");
                 battleObject.AddComponent<BattleManager>();
+            }
+
+            var battle = BattleManager.Instance;
+            if (battle == null)
+            {
+                Debug.LogError("Unable to initialize the battle manager.", this);
+                enabled = false;
+                return;
             }
 
             if (Camera.main == null)
@@ -26,20 +40,27 @@ namespace MyUnityGame.Gameplay
                 camera.transform.position = new Vector3(0f, 0f, -10f);
             }
 
-            if (GameManager.Instance != null)
+            var encounterName = GameManager.Instance != null
+                ? GameManager.Instance.CurrentEncounter
+                : null;
+            if (!battle.StartBattle(string.IsNullOrWhiteSpace(encounterName) ? "Demon" : encounterName))
             {
-                GameManager.Instance.StartBattle("Demon");
-            }
-
-            if (BattleManager.Instance != null)
-            {
-                BattleManager.Instance.StartBattle();
+                Debug.LogError("The battle could not be started. Check the active party and encounter settings.", this);
+                enabled = false;
             }
         }
 
         public void ReturnToWorld()
         {
-            SceneManager.LoadScene("SampleScene");
+            const string worldScenePath = "Assets/Scenes/SampleScene.unity";
+            var worldSceneIndex = SceneUtility.GetBuildIndexByScenePath(worldScenePath);
+            if (worldSceneIndex < 0)
+            {
+                Debug.LogError($"World scene is not available in Build Settings: {worldScenePath}", this);
+                return;
+            }
+
+            SceneManager.LoadScene(worldSceneIndex);
         }
     }
 }

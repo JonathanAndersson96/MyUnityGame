@@ -127,6 +127,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1000000002}
+  - component: {fileID: 1000000003}
   m_Layer: 0
   m_Name: BattleSceneBootstrap
   m_TagString: Untagged
