@@ -15,7 +15,8 @@ namespace MyUnityGame.Gameplay
         private BattleManager battle;
         private Menu currentMenu;
 
-        private void Awake()
+        // Start, not Awake: adding the battle manager adds this HUD first, before the manager exists.
+        private void Start()
         {
             battle = GetComponent<BattleManager>();
         }
