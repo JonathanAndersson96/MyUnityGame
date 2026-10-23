@@ -5,7 +5,7 @@ namespace MyUnityGame.Battle
     [CreateAssetMenu(menuName = "My Unity Game/Battle Tuning", fileName = "BattleTuning")]
     public class BattleTuning : ScriptableObject
     {
-        [Header("Stats (open question: final stat formula)")]
+        [Header("Stats")]
         [SerializeField, Min(0f), Tooltip("How much one invested point is worth compared with one base point.")]
         private float investedPointValue = 1f;
         [SerializeField, Min(1), Tooltip("No stat can ever drop below this value.")]

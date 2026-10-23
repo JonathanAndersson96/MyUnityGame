@@ -6,7 +6,7 @@ namespace MyUnityGame.Battle.Tests
     {
         private const int Level = 50;
 
-        // Even 100s at level 50 give 105 in every non-Health stat, so a 60-power move has a base damage of 28.
+        // Even 100s at level 50 give 120 in every stat, so a 60-power move has a base damage of 28.
         private const int NeutralDamage = 28;
 
         [TestCase(200, 100, 11000)]

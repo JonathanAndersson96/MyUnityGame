@@ -5,23 +5,37 @@ namespace MyUnityGame.Battle.Tests
     public class StatTests : BattleTestFixture
     {
         [Test]
-        public void Calculate_ScalesWithLevel()
+        public void Calculate_FollowsTheDesignDocLevelCurve()
         {
-            Assert.AreEqual(205, StatCalculator.Calculate(StatKind.Speed, 100, 0, 100, Tuning));
-            Assert.AreEqual(310, StatCalculator.Calculate(StatKind.Health, 100, 0, 100, Tuning));
-            Assert.AreEqual(105, StatCalculator.Calculate(StatKind.Speed, 100, 0, 50, Tuning));
+            // 2 × Base × (Level + 25) ÷ 125: twice the base at level 100, 1.2× at level 50.
+            Assert.AreEqual(200, StatCalculator.Calculate(StatKind.Speed, 100, 0, 100, Tuning));
+            Assert.AreEqual(120, StatCalculator.Calculate(StatKind.Speed, 100, 0, 50, Tuning));
+        }
+
+        [Test]
+        public void Calculate_GivesHealthTheSameCurveAsEveryOtherStat()
+        {
+            Assert.AreEqual(200, StatCalculator.Calculate(StatKind.Health, 100, 0, 100, Tuning));
+            Assert.AreEqual(120, StatCalculator.Calculate(StatKind.Health, 100, 0, 50, Tuning));
         }
 
         [Test]
         public void Calculate_AddsInvestedPointsBeforeLevelScaling()
         {
-            Assert.AreEqual(305, StatCalculator.Calculate(StatKind.PhysicalAttack, 100, 50, 100, Tuning));
+            Assert.AreEqual(300, StatCalculator.Calculate(StatKind.PhysicalAttack, 100, 50, 100, Tuning));
         }
 
         [Test]
         public void Calculate_NeverDropsBelowHalfTheBase()
         {
-            Assert.AreEqual(105, StatCalculator.Calculate(StatKind.MagicDefense, 100, -100, 100, Tuning));
+            Assert.AreEqual(100, StatCalculator.Calculate(StatKind.MagicDefense, 100, -100, 100, Tuning));
+        }
+
+        [Test]
+        public void Calculate_NeverDropsBelowTheMinimumStatValue()
+        {
+            // 2 × 1 × 26 ÷ 125 rounds down to 0, so the minimum stat value of 1 applies.
+            Assert.AreEqual(1, StatCalculator.Calculate(StatKind.Health, 1, 0, 1, Tuning));
         }
 
         [TestCase(1, 1, 500, true)]

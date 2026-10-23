@@ -2,10 +2,14 @@ using System;
 
 namespace MyUnityGame.Battle
 {
-    // Placeholder Gen 4-style level scaling until the stat formula is decided.
+    // Every stat, Health included, follows the design doc's curve: 2 × Base × (Level + 25) ÷ 125,
+    // so a stat is 1.2× its base at level 50 and twice its base at level 100.
     // Invested points enter the formula like EVs, so their effect grows with level.
     public static class StatCalculator
     {
+        private const int LevelOffset = 25;
+        private const int LevelDivisor = 125;
+
         public static int Calculate(StatKind stat, int baseValue, int investedShift, int level, BattleTuning tuning)
         {
             if (tuning == null)
@@ -25,8 +29,7 @@ namespace MyUnityGame.Battle
 
             var shifted = baseValue + (int)(investedShift * (double)tuning.InvestedPointValue);
             var effectiveBase = Math.Max(baseValue - InvestmentRules.MaxLoss(baseValue), shifted);
-            var scaled = 2 * effectiveBase * level / 100;
-            var value = stat == StatKind.Health ? scaled + level + 10 : scaled + 5;
+            var value = 2 * effectiveBase * (level + LevelOffset) / LevelDivisor;
             return Math.Max(tuning.MinimumStatValue, value);
         }
     }
