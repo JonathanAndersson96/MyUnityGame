@@ -97,7 +97,7 @@ namespace MyUnityGame.Gameplay
 
             if (PartyManager.Instance == null || PartyManager.Instance.Party.Members.Count == 0)
             {
-                Debug.LogWarning("Your party has no demons left to fight with.", this);
+                Debug.LogWarning("Your whole party has been banished; there is no demon left to fight with.", this);
                 return;
             }
 

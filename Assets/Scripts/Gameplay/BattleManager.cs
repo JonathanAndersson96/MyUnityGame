@@ -39,7 +39,7 @@ namespace MyUnityGame.Gameplay
 
         public bool StartBattle(string encounterName, DemonDefinition wildDemonDefinition)
         {
-            if (battle != null)
+            if (battle != null || string.IsNullOrWhiteSpace(encounterName) || wildDemonDefinition == null)
             {
                 return false;
             }
@@ -77,11 +77,6 @@ namespace MyUnityGame.Gameplay
             {
                 BattleMessages.Describe(battleEvent, messages);
             }
-
-            if (IsResolved)
-            {
-                GameManager.Instance?.EndBattle(battle.Outcome == BattleOutcome.Won);
-            }
         }
 
         public void ReturnToWorld()
@@ -98,6 +93,8 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
+            // The battle phase lasts until the player leaves the result screen, so the menu stays closed on it.
+            GameManager.Instance?.EndBattle(battle.Outcome == BattleOutcome.Won);
             SceneManager.LoadScene(worldSceneIndex);
         }
 

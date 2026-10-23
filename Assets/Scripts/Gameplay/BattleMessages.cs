@@ -34,7 +34,7 @@ namespace MyUnityGame.Gameplay
                     lines.Add("It's super effective!");
                     break;
                 case Effectiveness.Resisted:
-                    lines.Add("It's not very effective...");
+                    lines.Add("It was resisted...");
                     break;
             }
 
@@ -48,7 +48,7 @@ namespace MyUnityGame.Gameplay
                 lines.Add($"Slower strike {shift:0.#}%.");
             }
 
-            lines.Add($"{NameOf(hit.Target, hit.TargetSide)} took {result.Damage} damage.");
+            lines.Add($"{NameOf(hit.Target, hit.TargetSide)} took {hit.HpLost} damage.");
         }
 
         private static string NameOf(Demon demon, BattleSide side) =>

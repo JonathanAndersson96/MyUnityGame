@@ -66,12 +66,16 @@ namespace MyUnityGame.Battle.Tests
         [Test]
         public void BanishingTheWildDemon_WinsBeforeItCanAct()
         {
-            // Base Health 10 at level 50 gives 12 HP, less than one 28-damage hit.
+            // Base Health 10 at level 50 gives 12 HP, less than one hit.
             var battle = StartBattle(new StatBlock(100, 100, 100, 100, 100, 150), new StatBlock(10, 100, 100, 100, 100, 100));
 
             var events = battle.UseMove(0);
 
             CollectionAssert.AreEqual(new[] { BattleSide.Player }, MoveUsers(events));
+            // 28 base damage, +5% for the 1.5:1 faster attacker.
+            var finishingHit = events.OfType<DamageDealtEvent>().Single();
+            Assert.AreEqual(29, finishingHit.Result.Damage);
+            Assert.AreEqual(12, finishingHit.HpLost, "Only the HP the demon had left is lost.");
             Assert.AreEqual(BattleSide.Opponent, events.OfType<DemonBanishedEvent>().Single().Side);
             Assert.AreEqual(0, battle.OpponentDemon.GetCurrentHp(Tuning));
             Assert.AreEqual(BattleOutcome.Won, battle.Outcome);
@@ -94,6 +98,41 @@ namespace MyUnityGame.Battle.Tests
             Assert.IsTrue(fragile.IsBanished);
             CollectionAssert.AreEqual(new[] { backup }, party.Members);
             Assert.AreEqual(BattleOutcome.Lost, battle.Outcome);
+        }
+
+        [Test]
+        public void DamageEvents_ReportEffectivenessStabAndTheSpeedModifier()
+        {
+            // The 2:1 faster Fire demon gets STAB and the full +10% speed bonus; the slower Water demon gets −10%.
+            var player = CreateDemon(DemonType.Fire, new StatBlock(100, 100, 100, 100, 100, 200), Level,
+                CreateMove(DemonType.Fire));
+            var wild = CreateDemon(DemonType.Water, EvenStats(), Level, CreateMove(DemonType.Order));
+            var battle = new DemonBattle(new Party(new[] { player }), wild, Tuning);
+
+            var hits = battle.UseMove(0).OfType<DamageDealtEvent>().ToArray();
+            var playerHit = hits.Single(hit => hit.TargetSide == BattleSide.Opponent);
+            var opponentHit = hits.Single(hit => hit.TargetSide == BattleSide.Player);
+
+            // Water resists Fire: 28 × 1.5 STAB × ½ × 1.1 speed = 23.
+            Assert.AreEqual(Effectiveness.Resisted, playerHit.Result.Effectiveness);
+            Assert.IsTrue(playerHit.Result.IsStab);
+            Assert.AreEqual(11000, playerHit.Result.SpeedModifierBasisPoints);
+            Assert.AreEqual(23, playerHit.Result.Damage);
+            Assert.AreEqual(9000, opponentHit.Result.SpeedModifierBasisPoints);
+        }
+
+        [Test]
+        public void Opponent_PicksTheFirstListedMoveWhenTwoHitEquallyHard()
+        {
+            var first = CreateMove(DemonType.Order);
+            var second = CreateMove(DemonType.Chaos);
+            var player = CreateDemon(DemonType.Matter, EvenStats(), Level, CreateMove(DemonType.Order));
+            var wild = CreateDemon(DemonType.Matter, EvenStats(), Level, first, second);
+            var battle = new DemonBattle(new Party(new[] { player }), wild, Tuning);
+
+            var opponentMove = battle.UseMove(0).OfType<MoveUsedEvent>().Single(used => used.Side == BattleSide.Opponent);
+
+            Assert.AreSame(first, opponentMove.Move);
         }
 
         [Test]

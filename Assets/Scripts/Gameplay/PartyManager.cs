@@ -1,3 +1,4 @@
+using System;
 using MyUnityGame.Battle;
 using UnityEngine;
 
@@ -41,14 +42,14 @@ namespace MyUnityGame.Gameplay
             if (startingParty == null)
             {
                 Debug.LogError($"The starting party is missing from Resources/{StartingPartyResourcePath}.", this);
-                Party = new Party(System.Array.Empty<Demon>());
+                Party = new Party(Array.Empty<Demon>());
                 return;
             }
 
             if (!startingParty.TryCreateParty(out var party, out var error))
             {
                 Debug.LogError($"The starting party is invalid: {error}", startingParty);
-                Party = new Party(System.Array.Empty<Demon>());
+                Party = new Party(Array.Empty<Demon>());
                 return;
             }
 

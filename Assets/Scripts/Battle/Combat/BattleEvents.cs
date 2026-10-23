@@ -21,16 +21,19 @@ namespace MyUnityGame.Battle
 
     public class DamageDealtEvent : BattleEvent
     {
-        public DamageDealtEvent(BattleSide targetSide, Demon target, DamageResult result)
+        public DamageDealtEvent(BattleSide targetSide, Demon target, DamageResult result, int hpLost)
         {
             TargetSide = targetSide;
             Target = target;
             Result = result;
+            HpLost = hpLost;
         }
 
         public BattleSide TargetSide { get; }
         public Demon Target { get; }
         public DamageResult Result { get; }
+        // The damage dealt, capped at the HP the target had left.
+        public int HpLost { get; }
     }
 
     public class DemonBanishedEvent : BattleEvent

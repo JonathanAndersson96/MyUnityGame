@@ -86,8 +86,9 @@ namespace MyUnityGame.Battle
 
             events.Add(new MoveUsedEvent(side, user, move));
             var result = DamageCalculator.Calculate(user, target, move, tuning);
-            target.TakeDamage(Math.Min(result.Damage, target.GetCurrentHp(tuning)));
-            events.Add(new DamageDealtEvent(targetSide, target, result));
+            var hpLost = Math.Min(result.Damage, target.GetCurrentHp(tuning));
+            target.TakeDamage(hpLost);
+            events.Add(new DamageDealtEvent(targetSide, target, result, hpLost));
 
             if (target.GetCurrentHp(tuning) == 0)
             {
