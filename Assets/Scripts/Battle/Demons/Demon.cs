@@ -29,7 +29,7 @@ namespace MyUnityGame.Battle
         public int BankedPoints => InvestmentRules.PointsEarnedBy(Level) - Investments.PointsSpent;
 
         public int GetStat(StatKind stat, BattleTuning tuning) =>
-            StatCalculator.Calculate(stat, Species.BaseStats[stat], Investments.ShiftFor(stat), Level, tuning);
+            StatCalculator.Calculate(Species.BaseStats[stat], Investments.ShiftFor(stat), Level, tuning);
 
         public InvestmentResult TryInvest(StatKind stat) =>
             Investments.TryInvest(stat, Species.BaseStats, BankedPoints);

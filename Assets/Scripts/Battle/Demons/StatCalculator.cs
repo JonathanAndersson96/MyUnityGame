@@ -4,13 +4,14 @@ namespace MyUnityGame.Battle
 {
     // Every stat, Health included, follows the design doc's curve: 2 × Base × (Level + 25) ÷ 125,
     // so a stat is 1.2× its base at level 50 and twice its base at level 100.
-    // Invested points enter the formula like EVs, so their effect grows with level.
+    // Investments enter the formula as part of Base, so their effect grows with level.
     public static class StatCalculator
     {
         private const int LevelOffset = 25;
-        private const int LevelDivisor = 125;
+        // Dividing by the offset maximum level makes a stat exactly twice its base at level 100.
+        private const int OffsetMaxLevel = Demon.MaxLevel + LevelOffset;
 
-        public static int Calculate(StatKind stat, int baseValue, int investedShift, int level, BattleTuning tuning)
+        public static int Calculate(int baseValue, int investedShift, int level, BattleTuning tuning)
         {
             if (tuning == null)
             {
@@ -29,7 +30,7 @@ namespace MyUnityGame.Battle
 
             var shifted = baseValue + (int)(investedShift * (double)tuning.InvestedPointValue);
             var effectiveBase = Math.Max(baseValue - InvestmentRules.MaxLoss(baseValue), shifted);
-            var value = 2 * effectiveBase * (level + LevelOffset) / LevelDivisor;
+            var value = 2 * effectiveBase * (level + LevelOffset) / OffsetMaxLevel;
             return Math.Max(tuning.MinimumStatValue, value);
         }
     }

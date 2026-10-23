@@ -8,34 +8,36 @@ namespace MyUnityGame.Battle.Tests
         public void Calculate_FollowsTheDesignDocLevelCurve()
         {
             // 2 × Base × (Level + 25) ÷ 125: twice the base at level 100, 1.2× at level 50.
-            Assert.AreEqual(200, StatCalculator.Calculate(StatKind.Speed, 100, 0, 100, Tuning));
-            Assert.AreEqual(120, StatCalculator.Calculate(StatKind.Speed, 100, 0, 50, Tuning));
+            Assert.AreEqual(200, StatCalculator.Calculate(100, 0, 100, Tuning));
+            Assert.AreEqual(120, StatCalculator.Calculate(100, 0, 50, Tuning));
         }
 
         [Test]
-        public void Calculate_GivesHealthTheSameCurveAsEveryOtherStat()
+        public void Demon_GivesHealthTheSameCurveAsEveryOtherStat()
         {
-            Assert.AreEqual(200, StatCalculator.Calculate(StatKind.Health, 100, 0, 100, Tuning));
-            Assert.AreEqual(120, StatCalculator.Calculate(StatKind.Health, 100, 0, 50, Tuning));
+            var species = CreateSpecies(DemonType.Matter, EvenStats());
+            Assert.AreEqual(200, new Demon(species, 100).GetStat(StatKind.Health, Tuning));
+            Assert.AreEqual(200, new Demon(species, 100).GetStat(StatKind.Speed, Tuning));
+            Assert.AreEqual(120, new Demon(species, 50).GetStat(StatKind.Health, Tuning));
         }
 
         [Test]
         public void Calculate_AddsInvestedPointsBeforeLevelScaling()
         {
-            Assert.AreEqual(300, StatCalculator.Calculate(StatKind.PhysicalAttack, 100, 50, 100, Tuning));
+            Assert.AreEqual(300, StatCalculator.Calculate(100, 50, 100, Tuning));
         }
 
         [Test]
         public void Calculate_NeverDropsBelowHalfTheBase()
         {
-            Assert.AreEqual(100, StatCalculator.Calculate(StatKind.MagicDefense, 100, -100, 100, Tuning));
+            Assert.AreEqual(100, StatCalculator.Calculate(100, -100, 100, Tuning));
         }
 
         [Test]
         public void Calculate_NeverDropsBelowTheMinimumStatValue()
         {
             // 2 × 1 × 26 ÷ 125 rounds down to 0, so the minimum stat value of 1 applies.
-            Assert.AreEqual(1, StatCalculator.Calculate(StatKind.Health, 1, 0, 1, Tuning));
+            Assert.AreEqual(1, StatCalculator.Calculate(1, 0, 1, Tuning));
         }
 
         [TestCase(1, 1, 500, true)]
