@@ -1,80 +1,98 @@
+using System;
+using MyUnityGame.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace MyUnityGame.Gameplay
 {
+    [RequireComponent(typeof(BoxCollider), typeof(Renderer))]
     public class GridEncounterTrigger : MonoBehaviour
     {
+        private static readonly int BaseColorProperty = Shader.PropertyToID("_BaseColor");
+        private static readonly Color IdleColor = new Color(0.82f, 0.18f, 0.22f);
+        private static readonly Color NearbyColor = new Color(1f, 0.38f, 0.38f);
+        private const string BattleScenePath = "Assets/Scenes/BattleScene.unity";
+        private const int InteractionDistance = 1;
+
         private GridPlayerController player;
+        private Renderer targetRenderer;
+        private MaterialPropertyBlock materialProperties;
+        private Vector2Int encounterCell;
+        private Vector2Int lastPlayerCell;
+        private string encounterName;
+        private bool hasPlayerCell;
         private bool playerInRange;
+
+        private void Awake()
+        {
+            targetRenderer = GetComponent<Renderer>();
+            materialProperties = new MaterialPropertyBlock();
+        }
+
+        public void Initialize(GridPlayerController encounterPlayer, Vector2Int cell, string name)
+        {
+            player = encounterPlayer ?? throw new ArgumentNullException(nameof(encounterPlayer));
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("An encounter name is required.", nameof(name));
+            }
+
+            encounterCell = cell;
+            encounterName = name;
+            UpdatePlayerRange();
+        }
 
         private void Update()
         {
             if (player == null)
             {
-                player = GameObject.FindWithTag("Player")?.GetComponent<GridPlayerController>();
-            }
-
-            if (player == null)
-            {
                 return;
             }
 
-            var activeWorld = GridPrototypeBootstrap.Instance;
-            if (activeWorld == null)
+            if (!hasPlayerCell || player.CurrentCell != lastPlayerCell)
             {
-                return;
+                UpdatePlayerRange();
             }
-
-            var inRange = player.CurrentCell == activeWorld.DemonCell ||
-                          Mathf.Abs(player.CurrentCell.x - activeWorld.DemonCell.x) <= 1 &&
-                          Mathf.Abs(player.CurrentCell.y - activeWorld.DemonCell.y) <= 1;
-
-            playerInRange = inRange;
-
-            var material = GetComponent<Renderer>().material;
-            material.SetColor("_BaseColor", inRange ? new Color(1f, 0.38f, 0.38f) : new Color(0.82f, 0.18f, 0.22f));
 
             var keyboard = Keyboard.current;
-            if (inRange && keyboard != null && keyboard.eKey.wasPressedThisFrame)
+            if (playerInRange && keyboard != null && keyboard.eKey.wasPressedThisFrame &&
+                (GameManager.Instance == null || !GameManager.Instance.IsMenuOpen))
             {
-                const string battleScenePath = "Assets/Scenes/BattleScene.unity";
-                if (SceneUtility.GetBuildIndexByScenePath(battleScenePath) >= 0)
-                {
-                    var gameManager = MyUnityGame.Core.GameManager.Instance;
-                    if (gameManager != null)
-                    {
-                        gameManager.StartBattle("Demon");
-                    }
-
-                    SceneManager.LoadScene("BattleScene");
-                }
-                else
-                {
-                    Debug.LogWarning($"Battle scene is not available in Build Settings: {battleScenePath}");
-                }
+                EnterBattle();
             }
         }
 
-        private void OnTriggerStay(Collider other)
+        private void UpdatePlayerRange()
         {
-            if (!other.CompareTag("Player"))
-            {
-                return;
-            }
+            lastPlayerCell = player.CurrentCell;
+            hasPlayerCell = true;
+            playerInRange =
+                Mathf.Abs(lastPlayerCell.x - encounterCell.x) <= InteractionDistance &&
+                Mathf.Abs(lastPlayerCell.y - encounterCell.y) <= InteractionDistance;
 
-            playerInRange = true;
+            targetRenderer.GetPropertyBlock(materialProperties);
+            materialProperties.SetColor(BaseColorProperty, playerInRange ? NearbyColor : IdleColor);
+            targetRenderer.SetPropertyBlock(materialProperties);
         }
 
-        private void OnTriggerExit(Collider other)
+        private void EnterBattle()
         {
-            if (!other.CompareTag("Player"))
+            var battleSceneIndex = SceneUtility.GetBuildIndexByScenePath(BattleScenePath);
+            if (battleSceneIndex < 0)
             {
+                Debug.LogWarning($"Battle scene is not available in Build Settings: {BattleScenePath}", this);
                 return;
             }
 
-            playerInRange = false;
+            if (GameManager.Instance == null)
+            {
+                Debug.LogError("Cannot enter the battle scene because the game manager is unavailable.", this);
+                return;
+            }
+
+            GameManager.Instance.PrepareEncounter(encounterName);
+            SceneManager.LoadScene(battleSceneIndex);
         }
     }
 }

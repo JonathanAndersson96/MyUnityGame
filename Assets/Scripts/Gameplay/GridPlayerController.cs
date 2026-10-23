@@ -1,15 +1,20 @@
+using System;
+using MyUnityGame.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MyUnityGame.Gameplay
 {
+    [RequireComponent(typeof(CapsuleCollider), typeof(Rigidbody))]
     public class GridPlayerController : MonoBehaviour
     {
         private const float MoveDurationWithoutAnimation = 0.2f;
+        private const int InitialColliderBufferSize = 8;
 
-        private GridPrototypeBootstrap world;
+        private IGridWorld world;
+        private IGridMovementInput movementInput;
         private SpriteWalkAnimator walkAnimator;
         private Collider playerCollider;
+        private Collider[] colliderBuffer = new Collider[InitialColliderBufferSize];
         private Vector2Int currentCell;
         private Vector2Int targetCell;
         private Vector3 moveStartPosition;
@@ -20,9 +25,25 @@ namespace MyUnityGame.Gameplay
 
         public Vector2Int CurrentCell => currentCell;
 
-        public void Initialize(Vector2Int startCell, GridPrototypeBootstrap bootstrap)
+        public void Initialize(Vector2Int startCell, IGridWorld gridWorld, IGridMovementInput input)
         {
-            world = bootstrap;
+            if (gridWorld == null)
+            {
+                throw new ArgumentNullException(nameof(gridWorld));
+            }
+
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            if (!gridWorld.IsWithinGrid(startCell))
+            {
+                throw new ArgumentOutOfRangeException(nameof(startCell), "The player start cell must be within the grid.");
+            }
+
+            world = gridWorld;
+            movementInput = input;
             walkAnimator = GetComponentInChildren<SpriteWalkAnimator>();
             playerCollider = GetComponent<Collider>();
             currentCell = startCell;
@@ -36,42 +57,23 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
+            if (BattleManager.Instance != null && BattleManager.Instance.IsActive)
+            {
+                return;
+            }
+
+            if (GameManager.Instance != null && GameManager.Instance.IsMenuOpen)
+            {
+                return;
+            }
+
             if (isMoving)
             {
                 UpdateMovement();
                 return;
             }
 
-            if (BattleManager.Instance != null && BattleManager.Instance.IsActive)
-            {
-                return;
-            }
-
-            var keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
-
-            Vector2Int moveDirection = Vector2Int.zero;
-
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
-            {
-                moveDirection = new Vector2Int(0, 1);
-            }
-            else if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
-            {
-                moveDirection = new Vector2Int(0, -1);
-            }
-            else if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-            {
-                moveDirection = new Vector2Int(-1, 0);
-            }
-            else if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-            {
-                moveDirection = new Vector2Int(1, 0);
-            }
-
+            var moveDirection = movementInput.ReadMoveDirection();
             if (moveDirection == Vector2Int.zero)
             {
                 return;
@@ -102,27 +104,42 @@ namespace MyUnityGame.Gameplay
 
         private bool HasBlockingColliderAt(Vector2Int cell)
         {
-            if (playerCollider == null)
+            if (playerCollider == null || !playerCollider.enabled)
             {
-                return false;
+                Debug.LogError("Player movement requires an enabled collider; rejecting the move.", this);
+                return true;
             }
 
             var targetPosition = world.GridToWorld(cell);
             var colliderCenterOffset = playerCollider.bounds.center - transform.position;
-            var overlaps = Physics.OverlapSphere(
+            var overlapCount = Physics.OverlapSphereNonAlloc(
                 targetPosition + colliderCenterOffset,
                 playerCollider.bounds.extents.x,
-                Physics.DefaultRaycastLayers,
+                colliderBuffer,
+                ~0,
                 QueryTriggerInteraction.Ignore);
-
-            foreach (var overlap in overlaps)
+            while (overlapCount == colliderBuffer.Length)
             {
-                if (overlap.transform != transform && !overlap.transform.IsChildOf(transform))
+                Array.Resize(ref colliderBuffer, checked(colliderBuffer.Length * 2));
+                overlapCount = Physics.OverlapSphereNonAlloc(
+                    targetPosition + colliderCenterOffset,
+                    playerCollider.bounds.extents.x,
+                    colliderBuffer,
+                    ~0,
+                    QueryTriggerInteraction.Ignore);
+            }
+
+            for (var i = 0; i < overlapCount; i++)
+            {
+                var overlap = colliderBuffer[i];
+                if (overlap != null && overlap.transform != transform && !overlap.transform.IsChildOf(transform))
                 {
+                    Array.Clear(colliderBuffer, 0, overlapCount);
                     return true;
                 }
             }
 
+            Array.Clear(colliderBuffer, 0, overlapCount);
             return false;
         }
 
