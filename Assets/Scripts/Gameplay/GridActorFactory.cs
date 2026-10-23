@@ -1,4 +1,5 @@
 using System;
+using MyUnityGame.Battle;
 using UnityEngine;
 
 namespace MyUnityGame.Gameplay
@@ -77,6 +78,7 @@ namespace MyUnityGame.Gameplay
             IGridWorld world,
             GridPlayerController player,
             string encounterName,
+            DemonDefinition wildDemon,
             Material material)
         {
             var demon = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -88,7 +90,7 @@ namespace MyUnityGame.Gameplay
             var collider = demon.GetComponent<BoxCollider>();
             collider.isTrigger = true;
             demon.GetComponent<Renderer>().sharedMaterial = material;
-            demon.AddComponent<GridEncounterTrigger>().Initialize(player, cell, encounterName);
+            demon.AddComponent<GridEncounterTrigger>().Initialize(player, cell, encounterName, wildDemon);
             return demon;
         }
 

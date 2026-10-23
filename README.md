@@ -23,11 +23,12 @@ The project uses a 3D URP foundation suited to 2.5D environments. The game direc
 ## Runtime systems
 
 - `Assets/Scripts/Core` owns scene-independent game state and bootstraps persistent services.
-- `Assets/Scripts/Data` contains serializable party and phase data.
-- `Assets/Scripts/Gameplay` contains grid-world composition, movement contracts and adapters, party state, encounter handling, and battle rules.
+- `Assets/Scripts/Battle` is the battle library (`MyUnityGame.Battle`): demons, stats, investment, types, damage and the battle engine. It has no scene dependencies and is covered by the EditMode tests in `Assets/Tests/EditMode`.
+- `Assets/Scripts/Data` contains the game phase.
+- `Assets/Scripts/Gameplay` contains grid-world composition, movement contracts and adapters, party state, encounter handling, and the battle scene's connection to the battle library.
 - `Assets/Scripts/UI` contains presentation components; battle presentation is separated from battle state.
 - `Assets/Scripts/UI/GameMenu.cs` is the Tab menu, built with UI Toolkit from `Assets/Resources/UI`. Each entry is an `IGameMenuPage`; Journal, Character, Bag and Save are placeholders.
-- `Assets/Resources/Gameplay/GridWorldSettings.asset` configures the prototype grid, encounter placement, obstacles, and character sprite resource paths.
-- `Assets/Resources/Gameplay/BattleRules.asset` configures opponent health, damage ranges, guard reduction, and turn timing.
+- `Assets/Resources/Gameplay/GridWorldSettings.asset` configures the prototype grid, the wild encounter (species, level and moves), obstacles, and character sprite resource paths.
+- `Assets/Resources/Battle` holds placeholder battle content: species, moves, the starting party and the battle tuning.
 
-Grid movement depends on `IGridWorld` and `IGridMovementInput`; the current keyboard input is an adapter, so alternate input schemes and world implementations can be supplied without changing the movement controller. Party state is kept by the persistent party service across scene changes, while the battle HUD reads state from the battle manager rather than owning combat rules. Party HP now persists through victories, and defeated encounters stay cleared for the current game session.
+Grid movement depends on `IGridWorld` and `IGridMovementInput`; the current keyboard input is an adapter, so alternate input schemes and world implementations can be supplied without changing the movement controller. The party of demons is kept by the persistent party service across scene changes. The battle library owns the battle rules (terms are defined in the [glossary](GLOSSARY.md)), and the battle manager and HUD only pass on the player's choices and show the result. HP persists between battles, banished demons leave the party for good, and defeated encounters stay cleared for the current game session.

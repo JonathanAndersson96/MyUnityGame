@@ -1,4 +1,5 @@
-using MyUnityGame.Core;
+using MyUnityGame.Battle;
+using MyUnityGame.Gameplay;
 using UnityEngine.UIElements;
 
 namespace MyUnityGame.UI
@@ -9,33 +10,24 @@ namespace MyUnityGame.UI
 
         public void Build(VisualElement container)
         {
-            var roster = GameManager.Instance != null ? GameManager.Instance.PartyRoster : null;
-            if (roster == null || roster.Members == null || roster.Members.Count == 0)
+            var partyManager = PartyManager.Instance;
+            var members = partyManager != null && partyManager.Party != null ? partyManager.Party.Members : null;
+            if (members == null || members.Count == 0)
             {
-                var empty = new Label("No party loaded.");
+                var empty = new Label("Your party has no demons.");
                 empty.AddToClassList("page__text");
                 container.Add(empty);
                 return;
             }
 
-            for (var i = 0; i < roster.Members.Count; i++)
+            foreach (var demon in members)
             {
-                var member = roster.Members[i];
-                if (member == null)
-                {
-                    continue;
-                }
-
                 var row = new VisualElement();
                 row.AddToClassList("party-row");
-                if (i == roster.ActiveMemberIndex)
-                {
-                    row.AddToClassList("party-row--active");
-                }
 
-                var name = new Label(member.Name);
+                var name = new Label($"{demon.Species.DisplayName} · {demon.Type} · Lv {demon.Level}");
                 name.AddToClassList("party-row__name");
-                var hp = new Label($"HP {member.CurrentHp}/{member.MaxHp}");
+                var hp = new Label(HpText(demon, partyManager.Tuning));
                 hp.AddToClassList("party-row__hp");
 
                 row.Add(name);
@@ -43,5 +35,10 @@ namespace MyUnityGame.UI
                 container.Add(row);
             }
         }
+
+        private static string HpText(Demon demon, BattleTuning tuning) =>
+            tuning != null
+                ? $"HP {demon.GetCurrentHp(tuning)}/{demon.GetStat(StatKind.Health, tuning)}"
+                : "HP ?";
     }
 }

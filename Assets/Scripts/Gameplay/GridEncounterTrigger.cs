@@ -1,4 +1,5 @@
 using System;
+using MyUnityGame.Battle;
 using MyUnityGame.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -21,6 +22,7 @@ namespace MyUnityGame.Gameplay
         private Vector2Int encounterCell;
         private Vector2Int lastPlayerCell;
         private string encounterName;
+        private DemonDefinition wildDemon;
         private bool hasPlayerCell;
         private bool playerInRange;
 
@@ -30,7 +32,8 @@ namespace MyUnityGame.Gameplay
             materialProperties = new MaterialPropertyBlock();
         }
 
-        public void Initialize(GridPlayerController encounterPlayer, Vector2Int cell, string name)
+        public void Initialize(GridPlayerController encounterPlayer, Vector2Int cell, string name,
+            DemonDefinition encounterDemon)
         {
             player = encounterPlayer ?? throw new ArgumentNullException(nameof(encounterPlayer));
             if (string.IsNullOrWhiteSpace(name))
@@ -40,6 +43,7 @@ namespace MyUnityGame.Gameplay
 
             encounterCell = cell;
             encounterName = name;
+            wildDemon = encounterDemon ?? throw new ArgumentNullException(nameof(encounterDemon));
             UpdatePlayerRange();
         }
 
@@ -91,7 +95,13 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
-            GameManager.Instance.PrepareEncounter(encounterName);
+            if (PartyManager.Instance == null || PartyManager.Instance.Party.Members.Count == 0)
+            {
+                Debug.LogWarning("Your party has no demons left to fight with.", this);
+                return;
+            }
+
+            GameManager.Instance.PrepareEncounter(encounterName, wildDemon);
             SceneManager.LoadScene(battleSceneIndex);
         }
     }

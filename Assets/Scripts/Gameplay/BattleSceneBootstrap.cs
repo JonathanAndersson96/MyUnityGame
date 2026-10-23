@@ -6,6 +6,8 @@ namespace MyUnityGame.Gameplay
 {
     public class BattleSceneBootstrap : MonoBehaviour
     {
+        private const string WorldSettingsResourcePath = "Gameplay/GridWorldSettings";
+
         private void Start()
         {
             if (PartyManager.Instance == null)
@@ -40,12 +42,20 @@ namespace MyUnityGame.Gameplay
                 camera.transform.position = new Vector3(0f, 0f, -10f);
             }
 
-            var encounterName = GameManager.Instance != null
-                ? GameManager.Instance.CurrentEncounter
-                : null;
-            if (!battle.StartBattle(string.IsNullOrWhiteSpace(encounterName) ? "Demon" : encounterName))
+            var encounterName = GameManager.Instance != null ? GameManager.Instance.CurrentEncounter : null;
+            var wildDemon = GameManager.Instance != null ? GameManager.Instance.CurrentWildDemon : null;
+            if (wildDemon == null)
             {
-                Debug.LogError("The battle could not be started. Check the active party and encounter settings.", this);
+                // Playing the battle scene on its own: fight the overworld's configured encounter.
+                var settings = Resources.Load<GridWorldSettings>(WorldSettingsResourcePath);
+                encounterName = settings != null ? settings.EncounterName : null;
+                wildDemon = settings != null ? settings.WildDemon : null;
+            }
+
+            if (string.IsNullOrWhiteSpace(encounterName) || wildDemon == null ||
+                !battle.StartBattle(encounterName, wildDemon))
+            {
+                Debug.LogError("The battle could not be started. Check the party and the encounter settings.", this);
                 enabled = false;
             }
         }

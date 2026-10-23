@@ -28,6 +28,12 @@ namespace MyUnityGame.Core
                 managerObject.AddComponent<GameManager>();
             }
 
+            if (PartyManager.Instance == null)
+            {
+                var partyObject = new GameObject("PartyManager");
+                partyObject.AddComponent<PartyManager>();
+            }
+
             if (Object.FindAnyObjectByType<GameMenu>() == null)
             {
                 var menuObject = new GameObject("GameMenu");

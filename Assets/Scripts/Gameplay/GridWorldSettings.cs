@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using MyUnityGame.Battle;
 using UnityEngine;
 
 namespace MyUnityGame.Gameplay
@@ -23,6 +24,7 @@ namespace MyUnityGame.Gameplay
         [SerializeField] private Vector2Int gridSize = new Vector2Int(35, 35);
         [SerializeField] private Vector2Int playerStartCell = new Vector2Int(17, 17);
         [SerializeField] private string encounterName = "Demon";
+        [SerializeField] private DemonDefinition wildDemon = new DemonDefinition();
         [SerializeField] private Vector2Int demonOffset = new Vector2Int(4, 3);
         [SerializeField] private Vector2Int[] obstacleOffsets = DefaultObstacleOffsets;
         [SerializeField] private string idleSpriteResourcePath = "Characters/MainCharacter";
@@ -35,6 +37,7 @@ namespace MyUnityGame.Gameplay
         public Vector2Int GridSize => gridSize;
         public Vector2Int PlayerStartCell => playerStartCell;
         public string EncounterName => encounterName;
+        public DemonDefinition WildDemon => wildDemon;
         public Vector2Int DemonCell => playerStartCell + demonOffset;
         public IReadOnlyList<Vector2Int> ObstacleOffsets =>
             obstacleOffsetsView ?? (obstacleOffsetsView = Array.AsReadOnly(obstacleOffsets ?? Array.Empty<Vector2Int>()));
@@ -61,6 +64,18 @@ namespace MyUnityGame.Gameplay
             if (string.IsNullOrWhiteSpace(encounterName))
             {
                 error = "Encounter name must not be empty.";
+                return false;
+            }
+
+            if (wildDemon == null)
+            {
+                error = "The wild demon is missing.";
+                return false;
+            }
+
+            if (!wildDemon.TryCreate(out _, out var wildDemonError))
+            {
+                error = $"The wild demon is invalid: {wildDemonError}";
                 return false;
             }
 

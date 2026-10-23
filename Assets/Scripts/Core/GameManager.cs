@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using MyUnityGame.Battle;
 using MyUnityGame.Data;
-using MyUnityGame.Gameplay;
 using UnityEngine;
 
 namespace MyUnityGame.Core
@@ -10,14 +10,14 @@ namespace MyUnityGame.Core
     {
         public static GameManager Instance { get; private set; }
 
-        public PartyRoster PartyRoster { get; private set; } = new PartyRoster();
         private readonly HashSet<string> defeatedEncounters = new HashSet<string>(StringComparer.Ordinal);
         private GamePhase phaseBeforeMenu;
 
-        public GamePhase CurrentPhase => PartyRoster.CurrentPhase;
-        public string CurrentEncounter => PartyRoster.CurrentEncounter;
-        public bool IsInBattle => PartyRoster.CurrentPhase == GamePhase.Battle;
-        public bool IsMenuOpen => PartyRoster.CurrentPhase == GamePhase.Menu;
+        public GamePhase CurrentPhase { get; private set; } = GamePhase.Exploration;
+        public string CurrentEncounter { get; private set; }
+        public DemonDefinition CurrentWildDemon { get; private set; }
+        public bool IsInBattle => CurrentPhase == GamePhase.Battle;
+        public bool IsMenuOpen => CurrentPhase == GamePhase.Menu;
 
         private void Awake()
         {
@@ -29,41 +29,6 @@ namespace MyUnityGame.Core
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeDefaultState();
-        }
-
-        public void InitializeDefaultState()
-        {
-            if (PartyRoster == null)
-            {
-                PartyRoster = new PartyRoster();
-            }
-
-            PartyRoster.InitializeDefaults();
-            SyncFromRuntimeParty();
-        }
-
-        public void SetActiveMember(int index)
-        {
-            var runtimeParty = PartyManager.Instance;
-            if (runtimeParty != null && (index < 0 || index >= runtimeParty.Members.Count))
-            {
-                return;
-            }
-
-            if (runtimeParty != null)
-            {
-                runtimeParty.SetActiveMember(index);
-                SyncFromRuntimeParty();
-                return;
-            }
-
-            PartyRoster.SetActiveMember(index);
-        }
-
-        public PartyMemberData GetActiveMember()
-        {
-            return PartyRoster.GetActiveMember();
         }
 
         public void StartBattle(string encounterName)
@@ -74,8 +39,8 @@ namespace MyUnityGame.Core
             }
 
             SetMenuOpen(false);
-            PartyRoster.CurrentPhase = GamePhase.Battle;
-            PartyRoster.CurrentEncounter = encounterName;
+            CurrentPhase = GamePhase.Battle;
+            CurrentEncounter = encounterName;
         }
 
         public bool SetMenuOpen(bool isOpen)
@@ -92,32 +57,34 @@ namespace MyUnityGame.Core
                     phaseBeforeMenu = CurrentPhase;
                 }
 
-                PartyRoster.CurrentPhase = GamePhase.Menu;
+                CurrentPhase = GamePhase.Menu;
             }
             else if (IsMenuOpen)
             {
-                PartyRoster.CurrentPhase = phaseBeforeMenu;
+                CurrentPhase = phaseBeforeMenu;
             }
 
             return true;
         }
 
-        public void PrepareEncounter(string encounterName)
+        public void PrepareEncounter(string encounterName, DemonDefinition wildDemon)
         {
             if (string.IsNullOrWhiteSpace(encounterName))
             {
                 throw new ArgumentException("An encounter name is required.", nameof(encounterName));
             }
 
-            PartyRoster.CurrentEncounter = encounterName;
+            CurrentEncounter = encounterName;
+            CurrentWildDemon = wildDemon ?? throw new ArgumentNullException(nameof(wildDemon));
         }
 
         public void EndBattle(bool playerWon)
         {
-            var encounterName = PartyRoster.CurrentEncounter;
+            var encounterName = CurrentEncounter;
             SetMenuOpen(false);
-            PartyRoster.CurrentPhase = GamePhase.Exploration;
-            PartyRoster.CurrentEncounter = null;
+            CurrentPhase = GamePhase.Exploration;
+            CurrentEncounter = null;
+            CurrentWildDemon = null;
 
             if (playerWon && !string.IsNullOrWhiteSpace(encounterName))
             {
@@ -129,33 +96,6 @@ namespace MyUnityGame.Core
         {
             return !string.IsNullOrWhiteSpace(encounterName) &&
                    defeatedEncounters.Contains(encounterName);
-        }
-
-        public void SyncFromRuntimeParty()
-        {
-            if (PartyManager.Instance == null)
-            {
-                return;
-            }
-
-            var runtimeMembers = PartyManager.Instance.Members;
-            if (runtimeMembers.Count == 0)
-            {
-                return;
-            }
-
-            PartyRoster.Members = new List<PartyMemberData>();
-            foreach (var member in runtimeMembers)
-            {
-                PartyRoster.Members.Add(new PartyMemberData
-                {
-                    Name = member.Name,
-                    MaxHp = member.MaxHp,
-                    CurrentHp = member.CurrentHp,
-                });
-            }
-
-            PartyRoster.ActiveMemberIndex = PartyManager.Instance.ActiveIndex;
         }
 
         private void OnDestroy()

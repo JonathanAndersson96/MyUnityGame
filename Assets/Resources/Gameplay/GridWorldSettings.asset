@@ -15,6 +15,14 @@ MonoBehaviour:
   gridSize: {x: 35, y: 35}
   playerStartCell: {x: 17, y: 17}
   encounterName: Demon
+  wildDemon:
+    species: {fileID: 11400000, guid: a6e8c52d5e6d4239b912850396dca911, type: 2}
+    level: 10
+    moves:
+    - {fileID: 11400000, guid: 51d76fcb73cf49538fadabe43b14a382, type: 2}
+    - {fileID: 11400000, guid: dfa490e2b7fb46c49a690f98f33e4cdd, type: 2}
+    - {fileID: 11400000, guid: 595572ed48964ca4ac20207ddad6ff3b, type: 2}
+    investments: []
   demonOffset: {x: 4, y: 3}
   obstacleOffsets:
   - {x: 1, y: 0}

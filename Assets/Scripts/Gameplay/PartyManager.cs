@@ -1,22 +1,18 @@
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using MyUnityGame.Core;
-using MyUnityGame.Data;
+using MyUnityGame.Battle;
 using UnityEngine;
 
 namespace MyUnityGame.Gameplay
 {
+    // Keeps the player's party of demons alive across scene loads.
     public class PartyManager : MonoBehaviour
     {
+        private const string StartingPartyResourcePath = "Battle/StartingParty";
+        private const string TuningResourcePath = "Battle/BattleTuning";
+
         public static PartyManager Instance { get; private set; }
 
-        private readonly List<PartyMember> members = new List<PartyMember>();
-        private int activeIndex;
-        private ReadOnlyCollection<PartyMember> membersView;
-
-        public IReadOnlyList<PartyMember> Members => membersView ?? (membersView = members.AsReadOnly());
-        public int ActiveIndex => activeIndex;
-        public PartyMember ActiveMember => members.Count == 0 ? null : members[activeIndex];
+        public Party Party { get; private set; }
+        public BattleTuning Tuning { get; private set; }
 
         private void Awake()
         {
@@ -30,86 +26,33 @@ namespace MyUnityGame.Gameplay
             transform.SetParent(null, true);
             DontDestroyOnLoad(gameObject);
 
-            var roster = GameManager.Instance != null ? GameManager.Instance.PartyRoster : null;
-            if (roster != null && roster.Members != null && roster.Members.Count > 0)
+            Tuning = Resources.Load<BattleTuning>(TuningResourcePath);
+            if (Tuning == null)
             {
-                InitializeFromRoster(roster);
-            }
-            else if (members.Count == 0)
-            {
-                InitializeDefaultParty();
+                Debug.LogError($"Battle tuning is missing from Resources/{TuningResourcePath}.", this);
             }
 
-            GameManager.Instance?.SyncFromRuntimeParty();
+            ResetToStartingParty();
         }
 
-        public void InitializeDefaultParty()
+        public void ResetToStartingParty()
         {
-            var defaultRoster = new PartyRoster();
-            defaultRoster.InitializeDefaults();
-            InitializeFromRoster(defaultRoster);
-        }
-
-        private void InitializeFromRoster(PartyRoster roster)
-        {
-            members.Clear();
-            var selectedIndex = -1;
-            for (var i = 0; i < roster.Members.Count; i++)
+            var startingParty = Resources.Load<PartyDefinition>(StartingPartyResourcePath);
+            if (startingParty == null)
             {
-                var data = roster.Members[i];
-                if (data == null || string.IsNullOrWhiteSpace(data.Name) || data.MaxHp <= 0)
-                {
-                    Debug.LogWarning("Skipping an invalid party member while initializing the runtime party.", this);
-                    continue;
-                }
-
-                var member = new PartyMember(data.Name, data.MaxHp);
-                member.ApplyDamage(data.MaxHp - Mathf.Clamp(data.CurrentHp, 0, data.MaxHp));
-                if (i == roster.ActiveMemberIndex)
-                {
-                    selectedIndex = members.Count;
-                }
-
-                members.Add(member);
-            }
-
-            if (members.Count == 0)
-            {
-                InitializeDefaultParty();
+                Debug.LogError($"The starting party is missing from Resources/{StartingPartyResourcePath}.", this);
+                Party = new Party(System.Array.Empty<Demon>());
                 return;
             }
 
-            activeIndex = selectedIndex >= 0
-                ? selectedIndex
-                : Mathf.Clamp(roster.ActiveMemberIndex, 0, members.Count - 1);
-        }
-
-        public void SetActiveMember(int index)
-        {
-            if (index < 0 || index >= members.Count)
+            if (!startingParty.TryCreateParty(out var party, out var error))
             {
+                Debug.LogError($"The starting party is invalid: {error}", startingParty);
+                Party = new Party(System.Array.Empty<Demon>());
                 return;
             }
 
-            activeIndex = index;
-        }
-
-        public void NextMember()
-        {
-            if (members.Count == 0)
-            {
-                return;
-            }
-
-            activeIndex = (activeIndex + 1) % members.Count;
-        }
-
-        public void ResetParty()
-        {
-            foreach (var member in members)
-            {
-                member.Reset();
-            }
+            Party = party;
         }
 
         private void OnDestroy()

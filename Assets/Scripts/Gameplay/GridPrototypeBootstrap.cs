@@ -90,12 +90,6 @@ namespace MyUnityGame.Gameplay
                 GetObstacleCells(),
                 this,
                 assets.RockMaterial);
-            if (PartyManager.Instance == null)
-            {
-                CreatePartyManager();
-            }
-
-            var battleManager = CreateBattleManager();
             var player = GridActorFactory.CreatePlayer(transform, settings.PlayerStartCell, this, settings);
             if (GameManager.Instance == null || !GameManager.Instance.IsEncounterDefeated(settings.EncounterName))
             {
@@ -105,8 +99,8 @@ namespace MyUnityGame.Gameplay
                     this,
                     player,
                     settings.EncounterName,
+                    settings.WildDemon,
                     assets.CreateDemonMaterial());
-                battleManager.SetEncounterObject(demonObject);
             }
 
             GridActorFactory.CreateCamera(player.transform);
@@ -121,25 +115,6 @@ namespace MyUnityGame.Gameplay
             }
 
             return cells;
-        }
-
-        private void CreatePartyManager()
-        {
-            var partyManagerObject = new GameObject("PartyManager");
-            partyManagerObject.transform.SetParent(transform, false);
-            partyManagerObject.AddComponent<PartyManager>();
-        }
-
-        private BattleManager CreateBattleManager()
-        {
-            if (BattleManager.Instance != null)
-            {
-                return BattleManager.Instance;
-            }
-
-            var battleManagerObject = new GameObject("BattleManager");
-            battleManagerObject.transform.SetParent(transform, false);
-            return battleManagerObject.AddComponent<BattleManager>();
         }
 
         public Vector3 GridToWorld(Vector2Int cell)

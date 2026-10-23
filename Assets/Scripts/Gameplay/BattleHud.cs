@@ -1,3 +1,4 @@
+using MyUnityGame.Battle;
 using UnityEngine;
 
 namespace MyUnityGame.Gameplay
@@ -8,9 +9,7 @@ namespace MyUnityGame.Gameplay
         private enum Menu
         {
             Main,
-            Fight,
-            Switch,
-            Bag
+            Fight
         }
 
         private BattleManager battle;
@@ -28,49 +27,35 @@ namespace MyUnityGame.Gameplay
                 return;
             }
 
-            var width = Mathf.Min(440f, Mathf.Max(220f, Screen.width - 32f));
-            var height = Mathf.Min(360f, Mathf.Max(220f, Screen.height - 32f));
+            var width = Mathf.Min(480f, Mathf.Max(240f, Screen.width - 32f));
+            var height = Mathf.Min(440f, Mathf.Max(260f, Screen.height - 32f));
             var box = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
             var content = new Rect(box.x + 20f, box.y + 38f, box.width - 40f, box.height - 54f);
-            var buttonWidth = (content.width - 8f) * 0.5f;
-            GUI.Box(box, battle.DemonMember != null ? $"{battle.DemonMember.Name} Encounter" : "Battle");
 
+            GUI.Box(box, $"Wild {battle.OpponentDemon.Species.DisplayName}");
             GUILayout.BeginArea(content);
             try
             {
-                DrawPartyStatus();
-
-                if (battle.DemonMember != null)
+                DrawDemon(battle.OpponentDemon);
+                DrawDemon(battle.PlayerDemon);
+                GUILayout.Space(8f);
+                foreach (var line in battle.Messages)
                 {
-                    GUILayout.Label(battle.DemonMember.HpText, GUILayout.Height(24f));
+                    GUILayout.Label(line);
                 }
 
+                GUILayout.FlexibleSpace();
                 if (battle.IsResolved)
                 {
                     DrawBattleResult();
-                    return;
                 }
-
-                if (battle.IsEnemyTurnPending)
+                else if (currentMenu == Menu.Fight)
                 {
-                    GUILayout.Label("The demon is preparing to attack...");
-                    return;
+                    DrawFightMenu();
                 }
-
-                switch (currentMenu)
+                else
                 {
-                    case Menu.Main:
-                        DrawMainMenu(buttonWidth);
-                        break;
-                    case Menu.Fight:
-                        DrawFightMenu();
-                        break;
-                    case Menu.Switch:
-                        DrawSwitchMenu();
-                        break;
-                    case Menu.Bag:
-                        DrawBagMenu();
-                        break;
+                    DrawMainMenu();
                 }
             }
             finally
@@ -79,139 +64,51 @@ namespace MyUnityGame.Gameplay
             }
         }
 
-        private void DrawPartyStatus()
+        private void DrawDemon(Demon demon)
         {
-            var members = battle.PartyMembers;
-            if (members == null || members.Count == 0)
-            {
-                if (battle.PlayerMember != null)
-                {
-                    GUILayout.Label(battle.PlayerMember.HpText);
-                }
+            var hp = battle.Tuning != null
+                ? $"HP {demon.GetCurrentHp(battle.Tuning)}/{demon.GetStat(StatKind.Health, battle.Tuning)}"
+                : string.Empty;
+            GUILayout.Label($"{demon.Species.DisplayName} · {demon.Type} · Lv {demon.Level}   {hp}");
+        }
 
-                return;
+        private void DrawMainMenu()
+        {
+            if (GUILayout.Button("Fight", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
+            {
+                currentMenu = Menu.Fight;
+            }
+        }
+
+        private void DrawFightMenu()
+        {
+            var moves = battle.PlayerDemon.Moves;
+            for (var i = 0; i < moves.Count; i++)
+            {
+                var move = moves[i];
+                var label = $"{move.DisplayName}  ({move.Type} · {move.Category} · {move.Power})";
+                if (GUILayout.Button(label, GUILayout.ExpandWidth(true), GUILayout.Height(38f)))
+                {
+                    currentMenu = Menu.Main;
+                    battle.UseMove(i);
+                    return;
+                }
             }
 
-            foreach (var member in members)
+            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(38f)))
             {
-                if (member != null)
-                {
-                    GUILayout.Label(member.HpText);
-                }
+                currentMenu = Menu.Main;
             }
         }
 
         private void DrawBattleResult()
         {
-            GUILayout.Label(
-                battle.PlayerWon
-                    ? "The demon stands down."
-                    : battle.PlayerMember == null
-                        ? "No living party members remain."
-                        : "The player withdraws from the fight.",
-                GUILayout.Height(30f));
-
+            GUILayout.Label(battle.Outcome == BattleOutcome.Won
+                ? "You won the battle."
+                : "You lost the battle.", GUILayout.Height(30f));
             if (GUILayout.Button("Return to the overworld", GUILayout.Height(42f)))
             {
                 battle.ReturnToWorld();
-            }
-        }
-
-        private void DrawMainMenu(float buttonWidth)
-        {
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Fight", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Fight;
-            }
-
-            if (GUILayout.Button("Flee", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Main;
-                battle.Flee();
-            }
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Switch", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Switch;
-            }
-
-            if (GUILayout.Button("Bag", GUILayout.Width(buttonWidth), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Bag;
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        private void DrawFightMenu()
-        {
-            if (GUILayout.Button("Attack", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                battle.Attack();
-                currentMenu = Menu.Main;
-            }
-
-            if (GUILayout.Button("Guard", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                battle.Guard();
-                currentMenu = Menu.Main;
-            }
-
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Main;
-            }
-        }
-
-        private void DrawSwitchMenu()
-        {
-            var members = battle.PartyMembers;
-            if (members == null || members.Count == 0)
-            {
-                GUILayout.Label("No party members are available to switch to.");
-            }
-            else
-            {
-                for (var i = 0; i < members.Count; i++)
-                {
-                    var member = members[i];
-                    if (member == null)
-                    {
-                        continue;
-                    }
-
-                    var label = $"{member.Name} HP: {member.CurrentHp}/{member.MaxHp}";
-                    if (member == battle.PlayerMember)
-                    {
-                        GUILayout.Label($"{label} (Active)");
-                    }
-                    else if (!member.IsAlive)
-                    {
-                        GUILayout.Label($"{label} (Unable to fight)");
-                    }
-                    else if (GUILayout.Button(label, GUILayout.ExpandWidth(true), GUILayout.Height(38f)) &&
-                             battle.SwitchMember(i))
-                    {
-                        currentMenu = Menu.Main;
-                        return;
-                    }
-                }
-            }
-
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Main;
-            }
-        }
-
-        private void DrawBagMenu()
-        {
-            GUILayout.Label("Your bag is empty.");
-            if (GUILayout.Button("Back", GUILayout.ExpandWidth(true), GUILayout.Height(42f)))
-            {
-                currentMenu = Menu.Main;
             }
         }
     }

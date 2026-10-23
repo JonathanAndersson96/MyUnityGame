@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64ea8767e40f7934db86ee35815f2ace, type: 3}
+  m_Name: GravelHound
+  m_EditorClassIdentifier:
+  displayName: Gravel Hound
+  type: 1
+  adaptationLineLength: 3
+  adaptationStage: 1
+  baseStats:
+    health: 80
+    physicalAttack: 85
+    physicalDefense: 80
+    magicAttack: 40
+    magicDefense: 60
+    speed: 55
